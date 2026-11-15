@@ -1,7 +1,6 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ Hachimi(libmain/libmain_orig) + 私有目录标记触发自动启动
-# 自动启动：仅当 App 私有目录下存在 dsh-auto-launch 文件时启动游戏；可用 run-as 创建
+# BlackBox（Android 16 + 中文）+ Hachimi + 标记驱动的自动导入/启动（私有目录 dsh-auto-launch）
 on:
   push:
     paths:
@@ -18,13 +17,11 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
       - name: JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '21'
-
       - name: 固定签名
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"; : > "$LOG"
@@ -33,13 +30,11 @@ jobs:
             keytool -genkeypair -v -keystore ci/bb.jks -alias bb -keyalg RSA -keysize 2048 \
               -validity 10000 -storepass bbpass12 -keypass bbpass12 \
               -dname "CN=BlackBoxCI,OU=DSH,O=Uma,L=NA,S=NA,C=CN" >> "$LOG" 2>&1
-            git config user.name  "github-actions[bot]"
+            git config user.name "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
-            git add -f ci/bb.jks
-            git commit -m "ci: 固定签名 keystore" >> "$LOG" 2>&1 || true
+            git add -f ci/bb.jks && git commit -m "ci: keystore" >> "$LOG" 2>&1 || true
             git push >> "$LOG" 2>&1 || true
           fi
-
       - name: 拉源码 + 装 NDK
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
@@ -47,7 +42,6 @@ jobs:
           git clone --depth 1 https://github.com/ALEX5402/NewBlackbox.git "$UP" >> "$LOG" 2>&1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >> "$LOG" 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.13846066" "platforms;android-36" >> "$LOG" 2>&1 || true
-
       - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
@@ -55,8 +49,7 @@ jobs:
           import re, sys, pathlib
           root = pathlib.Path(sys.argv[1]); ws = pathlib.Path(sys.argv[2])
 
-          gb = root / "app/build.gradle"
-          g = gb.read_text(encoding="utf-8")
+          gb = root / "app/build.gradle"; g = gb.read_text(encoding="utf-8")
           if "bbci_keystore" not in g:
               sig = ("    signingConfigs {\n        bbci_keystore {\n"
                      "            storeFile file(\"%s\")\n"
@@ -64,11 +57,9 @@ jobs:
                      "            keyPassword 'bbpass12'\n        }\n    }\n" % (ws / "ci" / "bb.jks"))
               g = g.replace("    defaultConfig {", sig + "    defaultConfig {", 1)
               g = re.sub(r"(buildTypes\s*\{)", r"\1\n        debug { signingConfig signingConfigs.bbci_keystore }", g, count=1)
-              gb.write_text(g, encoding="utf-8")
-              print("OK 固定签名")
+              gb.write_text(g, encoding="utf-8"); print("OK sign")
 
-          mf = root / "app/src/main/AndroidManifest.xml"
-          m = mf.read_text(encoding="utf-8")
+          mf = root / "app/src/main/AndroidManifest.xml"; m = mf.read_text(encoding="utf-8")
           if "MANAGE_EXTERNAL_STORAGE" not in m:
               a = '<uses-permission android:name="android.permission.QUERY_ALL_PACKAGES"'
               if a in m:
@@ -82,15 +73,12 @@ jobs:
           if anchor in s:
               s = s.replace(anchor, anchor + ("\n                    Context __host = BlackBoxCore.getContext();\n"
                                               "                    if (__host != null) { args[0] = __host; context = __host; }"), 1)
-              wv.write_text(s, encoding="utf-8")
-              print("OK WebViewProxy")
+              wv.write_text(s, encoding="utf-8"); print("OK webview")
 
           bt = root / "Bcore/src/main/java/top/niunaijun/blackbox/app/BActivityThread.java"
           b = bt.read_text(encoding="utf-8")
           anchor3 = "        Context packageContext = createPackageContext(applicationInfo);"
           redirect = (
-            "        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName"
-            " + \" nativeLibDir=\" + applicationInfo.nativeLibraryDir);\n"
             "        if (processName != null && processName.contains(\"umamusu\")) {\n"
             "            try {\n"
             "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
@@ -108,32 +96,26 @@ jobs:
             "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
             "                java.io.File __srcDir = new java.io.File(__origDir);\n"
             "                java.io.File[] __fs = __srcDir.listFiles();\n"
-            "                if (__fs != null) {\n"
-            "                    for (java.io.File __f : __fs) {\n"
-            "                        if (!__f.getName().endsWith(\".so\")) continue;\n"
-            "                        if (__f.getName().equals(\"libmain.so\")) continue;\n"
-            "                        java.io.File __t = new java.io.File(__nl, __f.getName());\n"
-            "                        if (__t.exists()) continue;\n"
-            "                        try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
-            "                    }\n"
+            "                if (__fs != null) for (java.io.File __f : __fs) {\n"
+            "                    if (!__f.getName().endsWith(\".so\")) continue;\n"
+            "                    if (__f.getName().equals(\"libmain.so\")) continue;\n"
+            "                    java.io.File __t = new java.io.File(__nl, __f.getName());\n"
+            "                    if (__t.exists()) continue;\n"
+            "                    try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
             "                }\n"
             "                java.io.File __realMain = new java.io.File(__srcDir, \"libmain.so\");\n"
             "                java.io.File __origLink = new java.io.File(__nl, \"libmain_orig.so\");\n"
-            "                if (__origLink.exists()) { __origLink.delete(); }\n"
+            "                if (__origLink.exists()) __origLink.delete();\n"
             "                android.system.Os.symlink(__realMain.getAbsolutePath(), __origLink.getAbsolutePath());\n"
             "                java.io.File __lm = new java.io.File(__nl, \"libmain.so\");\n"
-            "                if (__lm.exists()) { __lm.delete(); }\n"
+            "                if (__lm.exists()) __lm.delete();\n"
             "                android.system.Os.symlink(__hm.getAbsolutePath(), __lm.getAbsolutePath());\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
-            "                android.util.Log.i(\"BB_INJECT\", \"redirect -> \" + __nl.getAbsolutePath()\n"
-            "                    + \" libmain=\" + __hm.length() + \" origMain=\" + __realMain.exists());\n"
-            "            } catch (Throwable t) {\n"
-            "                android.util.Log.e(\"BB_INJECT\", \"redirect failed\", t);\n"
-            "            }\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"redirect ok libmain=\" + __hm.length() + \" origMain=\" + __realMain.exists());\n"
+            "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"redirect failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8")
-              print("OK redirect + libmain_orig")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK redirect")
 
           app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
           a2 = app.read_text(encoding="utf-8")
@@ -144,21 +126,24 @@ jobs:
             "                try {\n"
             "                    Thread.sleep(4000)\n"
             "                    val mark = java.io.File(filesDir, \"dsh-auto-launch\")\n"
-            "                    android.util.Log.i(\"BB_AUTO\", \"marker=\" + mark.exists() + \" path=\" + mark.absolutePath)\n"
+            "                    android.util.Log.i(\"BB_AUTO\", \"marker=\" + mark.exists())\n"
             "                    if (mark.exists()) {\n"
-            "                        val r = BlackBoxCore.get().launchApk(\"com.bilibili.umamusu\", 0)\n"
-            "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + r)\n"
+            "                        val core = BlackBoxCore.get()\n"
+            "                        val la = core.getInstalledApplications(0, 0)\n"
+            "                        android.util.Log.i(\"BB_AUTO\", \"guest=\" + (la?.size ?: -1))\n"
+            "                        if (la == null || la.isEmpty()) {\n"
+            "                            val r1 = core.installPackageAsUser(\"com.bilibili.umamusu\", 0)\n"
+            "                            android.util.Log.i(\"BB_AUTO\", \"install=\" + r1?.success + \" msg=\" + r1?.msg)\n"
+            "                        }\n"
+            "                        Thread.sleep(1500)\n"
+            "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + core.launchApk(\"com.bilibili.umamusu\", 0))\n"
             "                    }\n"
-            "                } catch (t: Throwable) {\n"
-            "                    android.util.Log.e(\"BB_AUTO\", \"auto failed\", t)\n"
-            "                }\n"
+            "                } catch (t: Throwable) { android.util.Log.e(\"BB_AUTO\", \"auto failed\", t) }\n"
             "            }.start()\n"
             "            }\n" + old)
           if old in a2 and "BB_AUTO" not in a2:
-              app.write_text(a2.replace(old, auto, 1), encoding="utf-8")
-              print("OK 私有目录标记自动启动")
+              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto import+launch")
           PY
-
       - name: 编译
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
@@ -166,26 +151,22 @@ jobs:
           chmod +x gradlew
           ( ./gradlew :app:assembleDebug --no-daemon --stacktrace ) >> "$LOG" 2>&1
           echo "gradle exit=$?" >> "$LOG"
-
       - name: 发布
         if: always()
         run: |
-          LOG="$GITHUB_WORKSPACE/b.log"
-          cd "$GITHUB_WORKSPACE"
+          LOG="$GITHUB_WORKSPACE/b.log"; cd "$GITHUB_WORKSPACE"
           APK=$(find upstream/app/build/outputs/apk -name "*universal*debug*.apk" | head -1)
           [ -z "$APK" ] && APK=$(find upstream/app/build/outputs/apk -name "*debug*.apk" | head -1)
           if [ -n "$APK" ]; then
-            echo "输出: $(stat -c%s "$APK") B" >> "$LOG"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-privflag-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-privflag-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-auto2-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-auto2-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
-          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; tail -n 60 "$LOG"; } > blackbox-build-status.txt
-          git config user.name  "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
+          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > blackbox-build-status.txt
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blackbox-build-status.txt || true
-          git commit -m "ci: blackbox build ($GITHUB_RUN_ID)" || echo "no change"
+          git commit -m "ci: blackbox ($GITHUB_RUN_ID)" || echo "no change"
           git pull --rebase --autostash >> /dev/null 2>&1 || true
           git push || { sleep 5; git pull --rebase --autostash >> /dev/null 2>&1 || true; git push; } || true
