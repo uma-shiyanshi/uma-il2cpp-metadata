@@ -1,14 +1,4 @@
-run: 43757489531 2026-11-15T20:22:04Z
-
-warning: direct cast of function item into an integer
-   --> src/core/interceptor.rs:102:125
-    |
-100 | ...
-101 | ...
-102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
-    |                                                                ^^^^^^^^
-    |
-   ::: src/android/gui_impl/input_hook.rs:192:5
+run: 43758164283 2026-11-15T20:29:31Z
     |
 192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
     |     ---------------------------------------------------- in this macro invocation
@@ -44,18 +34,8 @@ help: first cast to a pointer `as *const ()`
 251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
     |                                                                                                     ++++++++++++
 
-warning: linker stderr: clang++: argument unused during compilation: '-static-libstdc++' [-Wunused-command-line-argument]
-  |
-  = note: `#[warn(linker_messages)]` on by default
-
-warning: `hachimi` (lib) generated 186 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 28s
+warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 45s
 cargo exit=0
-size=14829504
---- NEEDED ---
-  0x0000000000000001 (NEEDED)       Shared library: [liblog.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libdl.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libm.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libc.so]
---- _Znwm 状态（DEF=已定义 / UND=未定义）---
-sha256: 98af454d0ec47dad52c65c5085d71fde952a8c6e04eae21d626bfa5d578460bd
+-rwxr-xr-x 2 runner runner 14830592 Nov 15 20:29 target/aarch64-linux-android/release/libhachimi.so
+sha256: 19f5f9bab7d88b5fe4a8e0af8c7e3283204c37053878a6addae8d0682a17332a
