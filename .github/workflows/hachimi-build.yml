@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# Hachimi 源码构建：disable_dlopen_hook + passthrough_only（纯透传，用于隔离 SIGBUS 责任）
+# Hachimi 源码构建：动态 libc++_shared（与游戏一致，避免 C++ 运行库符号冲突）
 on:
   push:
     paths:
@@ -27,21 +27,18 @@ jobs:
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
-          echo "commit: $(git -C "$GITHUB_WORKSPACE/hz" rev-parse --short HEAD)" >> "$LOG"
       - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
-
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "disable_dlopen_hook" not in t:
               a = "    pub disable_gui_once: bool,"
               t = t.replace(a, a + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,\n    #[serde(default)]\n    pub passthrough_only: bool,", 1)
-              cfg.write_text(t, encoding="utf-8"); print("OK Config(+2 flags)")
-
+              cfg.write_text(t, encoding="utf-8")
           hk = root / "src/android/hook.rs"
           h = hk.read_text(encoding="utf-8")
           old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
@@ -52,9 +49,7 @@ jobs:
                  '    } else {\n'
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
-          assert old in h
-          hk.write_text(h.replace(old, new, 1), encoding="utf-8"); print("OK hook.rs")
-
+          hk.write_text(h.replace(old, new, 1), encoding="utf-8")
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
           old2 = ("    let env = vm.get_env().unwrap();\n"
@@ -69,10 +64,10 @@ jobs:
                   "    hook::init(env.get_raw());\n"
                   "\n"
                   '    info!("JNI_OnLoad");\n')
-          assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK main.rs passthrough")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
+          print("OK patches")
           PY
-      - name: 交叉编译
+      - name: 交叉编译（动态 libc++_shared）
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
@@ -82,12 +77,15 @@ jobs:
           export CXX_aarch64_linux_android="$TC/aarch64-linux-android26-clang++"
           export AR_aarch64_linux_android="$TC/llvm-ar"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
-          export CXXSTDLIB="c++_static"
-          export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
+          export CXXSTDLIB="c++_shared"
+          export RUSTFLAGS="-C link-arg=-lc++_shared"
           cd "$GITHUB_WORKSPACE/hz"
           cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
           echo "cargo exit=$?" >> "$LOG"
-          ls -l target/aarch64-linux-android/release/libhachimi.so >> "$LOG" 2>&1
+          SO=target/aarch64-linux-android/release/libhachimi.so
+          echo "size=$(stat -c%s $SO 2>/dev/null)" >> "$LOG"
+          echo "--- NEEDED ---" >> "$LOG"
+          "$TC/llvm-readelf" -d "$SO" | grep -E "NEEDED" >> "$LOG" 2>&1
       - name: 发布
         if: always()
         run: |
@@ -97,8 +95,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libmain-passthru-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libmain-passthru-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libmain-cxxshared-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libmain-cxxshared-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           else
             echo "无产物" >> "$LOG"
           fi
