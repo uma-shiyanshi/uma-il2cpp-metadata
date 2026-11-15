@@ -1,7 +1,6 @@
 name: hachimi-build
 
-# 从源码构建 Hachimi（Unity2020 分支），加一个 disable_dlopen_hook 开关
-# 目的：容器里 do_dlopen 被 inline hook 后，游戏批量加载 so 会 SIGSEGV；关掉它才能继续
+# 从源码构建 Hachimi（Unity2020），带 disable_dlopen_hook 开关 + 静态 C++ 运行库
 on:
   push:
     paths:
@@ -27,28 +26,25 @@ jobs:
           rustup target add aarch64-linux-android >> "$LOG" 2>&1
           rustc --version >> "$LOG" 2>&1
 
-      - name: 拉 Hachimi 源码（2020 分支）
+      - name: 拉源码
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
           echo "commit: $(git -C "$GITHUB_WORKSPACE/hz" rev-parse --short HEAD)" >> "$LOG"
 
-      - name: 打补丁（disable_dlopen_hook）
+      - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
-
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "disable_dlopen_hook" not in t:
-              anchor = "    pub disable_gui_once: bool,"
-              assert anchor in t, "Config 锚点未命中"
-              t = t.replace(anchor, anchor + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1)
-              cfg.write_text(t, encoding="utf-8")
-              print("OK Config.disable_dlopen_hook")
-
+              a = "    pub disable_gui_once: bool,"
+              assert a in t
+              cfg.write_text(t.replace(a, a + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1), encoding="utf-8")
+              print("OK Config")
           hk = root / "src/android/hook.rs"
           h = hk.read_text(encoding="utf-8")
           old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
@@ -59,25 +55,31 @@ jobs:
                  '    } else {\n'
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
-          assert old in h, "hook.rs 锚点未命中"
+          assert old in h
           hk.write_text(h.replace(old, new, 1), encoding="utf-8")
-          print("OK hook.rs 开关")
+          print("OK hook.rs")
           PY
 
-      - name: 交叉编译
+      - name: 交叉编译（静态 libc++）
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
-          echo "NDK=$NDK" >> "$LOG"
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CC_aarch64_linux_android="$TC/aarch64-linux-android26-clang"
+          export CXX_aarch64_linux_android="$TC/aarch64-linux-android26-clang++"
           export AR_aarch64_linux_android="$TC/llvm-ar"
-          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
+          export CXXSTDLIB="c++_static"
+          export RUSTFLAGS="-C link-arg=-static-libstdc++ -C link-arg=-Wl,--allow-shlib-undefined"
           cd "$GITHUB_WORKSPACE/hz"
           cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
           echo "cargo exit=$?" >> "$LOG"
-          ls -l target/aarch64-linux-android/release/*.so >> "$LOG" 2>&1
+          SO=target/aarch64-linux-android/release/libhachimi.so
+          ls -l "$SO" >> "$LOG" 2>&1
+          "$TC/llvm-readelf" -d "$SO" | head -20 >> "$LOG" 2>&1
+          echo "--- 未定义 C++ 符号检查 ---" >> "$LOG"
+          "$TC/llvm-readelf" -s "$SO" | grep -c "_Znwm" >> "$LOG" 2>&1 || true
 
       - name: 发布
         if: always()
@@ -89,10 +91,10 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libmain-nodlopen-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libmain-nodlopen-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libmain-nodlopen2-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libmain-nodlopen2-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           else
-            echo "编译产物不存在" >> "$LOG"
+            echo "无产物" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 80 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
