@@ -1,4 +1,6 @@
-run: 43753018623  2026-11-15T19:35:44Z
+run: 43753589907  2026-11-15T19:42:26Z
+> Task :Bcore:bundleLibRuntimeToJarDebug
+> Task :app:mergeExtDexDebug
 > Task :app:mergeDebugJniLibFolders
 > Task :app:mergeLibDexDebug
 > Task :Bcore:configureNdkBuildDebug[arm64-v8a]
@@ -8,8 +10,8 @@ run: 43753018623  2026-11-15T19:35:44Z
 > Task :Bcore:mergeDebugJniLibFolders
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 > Task :Bcore:mergeDebugNativeLibs
+> Task :app:writeDebugSigningConfigVersions
 > Task :Bcore:copyDebugJniLibsProjectOnly
 > Task :app:mergeDebugNativeLibs
 > Task :app:stripDebugDebugSymbols
@@ -52,10 +54,8 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 2m 19s
+BUILD SUCCESSFUL in 2m 54s
 70 actionable tasks: 70 executed
 gradle exit=0
-输出: 9181330 B
-sha256: 9155676e134255644bb3aa8bedf97b1fbf10ee5332ee7a5b7868ec8e02bb7845
-arm64-v8a
-armeabi-v7a
+输出: 9181451 B
+sha256: 76ab96ae1f2a768e339123411fc5672acd6001988d9c9a733aa7740c05bf4c3e
