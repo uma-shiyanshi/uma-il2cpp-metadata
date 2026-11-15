@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v4：自动启动改为一次性（启动前先删标记）+ Hachimi 放 nativelib + c++_shared 真实拷贝
+# 无自动启动版本：容器只做 nativelib 准备 + 配置写入 + 晚加载 Hachimi，游戏由用户自己点开
 on:
   push:
     paths:
@@ -151,33 +151,7 @@ jobs:
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v4")
-
-          app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
-          a2 = app.read_text(encoding="utf-8")
-          old = "            AppManager.doOnCreate(mContext)"
-          auto = (
-            "            if ((applicationInfo.processName ?: packageName) == packageName) {\n"
-            "            Thread {\n"
-            "                try {\n"
-            "                    Thread.sleep(3000)\n"
-            "                    val mark = java.io.File(filesDir, \"dsh-auto-launch\")\n"
-            "                    if (mark.exists()) {\n"
-            "                        mark.delete()   // 一次性：先删再启动，避免反复拉起\n"
-            "                        android.util.Log.i(\"BB_AUTO\", \"marker consumed\")\n"
-            "                        val core = BlackBoxCore.get()\n"
-            "                        val la = core.getInstalledApplications(0, 0)\n"
-            "                        if (la == null || la.isEmpty()) {\n"
-            "                            android.util.Log.i(\"BB_AUTO\", \"install=\" + core.installPackageAsUser(\"com.bilibili.umamusu\", 0)?.success)\n"
-            "                            Thread.sleep(1500)\n"
-            "                        }\n"
-            "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + core.launchApk(\"com.bilibili.umamusu\", 0))\n"
-            "                    }\n"
-            "                } catch (t: Throwable) { android.util.Log.e(\"BB_AUTO\", \"auto failed\", t) }\n"
-            "            }.start()\n"
-            "            }\n" + old)
-          if old in a2 and "BB_AUTO" not in a2:
-              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto(one-shot)")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load, 无自动启动")
           PY
       - name: 编译
         run: |
@@ -195,8 +169,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-oneshot-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-oneshot-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-noauto-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-noauto-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
