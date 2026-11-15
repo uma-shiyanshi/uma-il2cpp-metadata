@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v3：Hachimi 放到 nativelib/ 内加载（依赖 libc++_shared 才能被解析）
+# 晚加载 v4：自动启动改为一次性（启动前先删标记）+ Hachimi 放 nativelib + c++_shared 真实拷贝
 on:
   push:
     paths:
@@ -97,6 +97,16 @@ jobs:
             "                    if (!__f.getName().endsWith(\".so\")) continue;\n"
             "                    if (__f.getName().equals(\"libmain.so\")) continue;\n"
             "                    java.io.File __t = new java.io.File(__nl, __f.getName());\n"
+            "                    if (__f.getName().equals(\"libc++_shared.so\")) {\n"
+            "                        if (!__t.exists() || __t.length() != __f.length()) {\n"
+            "                            java.io.InputStream __i2 = new java.io.FileInputStream(__f);\n"
+            "                            java.io.OutputStream __o2 = new java.io.FileOutputStream(__t);\n"
+            "                            byte[] __b2 = new byte[131072]; int __n2;\n"
+            "                            while ((__n2 = __i2.read(__b2)) > 0) { __o2.write(__b2, 0, __n2); }\n"
+            "                            __i2.close(); __o2.close();\n"
+            "                        }\n"
+            "                        continue;\n"
+            "                    }\n"
             "                    if (__t.exists()) continue;\n"
             "                    try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
             "                }\n"
@@ -108,10 +118,8 @@ jobs:
             "                android.system.Os.symlink(__realMain.getAbsolutePath(), __ol.getAbsolutePath());\n"
             "                java.io.File __stale = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
             "                if (__stale.exists()) __stale.delete();\n"
-            "                java.io.File __stale2 = new java.io.File(__ctx.getFilesDir(), \"libhachimi.so\");\n"
-            "                if (__stale2.exists()) __stale2.delete();\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
-            "                android.util.Log.i(\"BB_INJECT\", \"nativelib ready hachimi=\" + __h.length() + \" cxx=\" + new java.io.File(__nl, \"libc++_shared.so\").exists());\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"nativelib ready hachimi=\" + __h.length());\n"
             "                try {\n"
             "                    java.io.File __cfgSrc = new java.io.File(\"/sdcard/Download/hachimi_config.json\");\n"
             "                    java.io.File __cfgDir = new java.io.File(\"/sdcard/Android/media/com.bilibili.umamusu/hachimi\");\n"
@@ -129,11 +137,11 @@ jobs:
             "                final java.io.File __hFinal = __h;\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
-            "                        Thread.sleep(20000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late loading \" + __hFinal.getAbsolutePath());\n"
+            "                        Thread.sleep(18000);\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"late loading\");\n"
             "                        System.load(__hFinal.getAbsolutePath());\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late)\");\n"
-            "                        Thread.sleep(1500);\n"
+            "                        Thread.sleep(1200);\n"
             "                        try { System.loadLibrary(\"il2cpp\"); android.util.Log.i(\"BB_INJECT\", \"il2cpp re-dlopen ok\"); }\n"
             "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"il2cpp dlopen failed\", __e); }\n"
             "                        try { System.loadLibrary(\"cri_ware_unity\"); android.util.Log.i(\"BB_INJECT\", \"cri re-dlopen ok\"); }\n"
@@ -143,7 +151,7 @@ jobs:
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v3")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v4")
 
           app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
           a2 = app.read_text(encoding="utf-8")
@@ -153,7 +161,10 @@ jobs:
             "            Thread {\n"
             "                try {\n"
             "                    Thread.sleep(3000)\n"
-            "                    if (java.io.File(filesDir, \"dsh-auto-launch\").exists()) {\n"
+            "                    val mark = java.io.File(filesDir, \"dsh-auto-launch\")\n"
+            "                    if (mark.exists()) {\n"
+            "                        mark.delete()   // 一次性：先删再启动，避免反复拉起\n"
+            "                        android.util.Log.i(\"BB_AUTO\", \"marker consumed\")\n"
             "                        val core = BlackBoxCore.get()\n"
             "                        val la = core.getInstalledApplications(0, 0)\n"
             "                        if (la == null || la.isEmpty()) {\n"
@@ -166,7 +177,7 @@ jobs:
             "            }.start()\n"
             "            }\n" + old)
           if old in a2 and "BB_AUTO" not in a2:
-              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto")
+              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto(one-shot)")
           PY
       - name: 编译
         run: |
@@ -184,8 +195,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-lateload3-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-lateload3-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-oneshot-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-oneshot-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
