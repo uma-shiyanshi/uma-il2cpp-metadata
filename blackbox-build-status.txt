@@ -1,17 +1,18 @@
-run: 43748165812  2026-11-15T18:44:22Z
+run: 43748736902  2026-11-15T18:50:34Z
 --- 末尾 100 行 ---
 > Task :app:processDebugManifest
 > Task :black-reflection:processResources NO-SOURCE
 > Task :black-reflection:classes
 > Task :black-reflection:jar
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
+> Task :Bcore:compileDebugAidl
 > Task :compiler:compileJava
 > Task :compiler:processResources NO-SOURCE
 > Task :compiler:classes
 > Task :compiler:jar
-> Task :app:processDebugManifestForPackage
 > Task :Bcore:javaPreCompileDebug
-> Task :Bcore:compileDebugAidl
-> Task :app:processDebugResources
+> Task :app:javaPreCompileDebug
 
 > Task :Bcore:compileDebugJavaWithJavac
 The following annotation processors are not incremental: compiler.jar (project :compiler).
@@ -23,7 +24,6 @@ Note: Some input files use unchecked or unsafe operations.
 Note: Recompile with -Xlint:unchecked for details.
 1 warning
 
-> Task :app:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
@@ -74,11 +74,11 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :Bcore:configureNdkBuildDebug[armeabi-v7a]
 > Task :Bcore:buildNdkBuildDebug[armeabi-v7a]
 > Task :Bcore:mergeDebugJniLibFolders
-> Task :Bcore:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
-> Task :Bcore:copyDebugJniLibsProjectOnly
+> Task :Bcore:mergeDebugNativeLibs
 > Task :app:writeDebugSigningConfigVersions
+> Task :Bcore:copyDebugJniLibsProjectOnly
 > Task :app:mergeDebugNativeLibs
 > Task :app:stripDebugDebugSymbols
 > Task :app:packageDebug
@@ -93,10 +93,10 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 2m 14s
+BUILD SUCCESSFUL in 2m 16s
 70 actionable tasks: 70 executed
 gradle exit=0
 APK=upstream/app/build/outputs/apk/debug/BlackBox_4.0.0_armeabi-v7a-debug.apk
-输出: 9050139 B
-sha256: 58603adda3dc2e0b19fb3b84a8fc89227561072cd3626bd9b433ceea12140459
+输出: 9050212 B
+sha256: ff78608f14ba013b5ae22af666b9239100a27eea4a67acd13e75c250026f86b9
 发布: 完成
