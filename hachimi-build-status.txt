@@ -1,30 +1,4 @@
-run: 43756331385 2026-11-15T20:09:59Z
-    |                                                                ^^^^^^^^
-    |
-   ::: src/android/gui_impl/input_hook.rs:180:24
-    |
-180 |                 return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event);
-    |                        ---------------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
-102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
-    |                                                                                                                             ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/core/interceptor.rs:102:125
-    |
-100 | ...
-101 | ...
-102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
-    |                                                                ^^^^^^^^
-    |
-   ::: src/android/gui_impl/input_hook.rs:186:24
-    |
-186 |                 return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event);
-    |                        ---------------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
+run: 43756962299 2026-11-15T20:16:55Z
     |
 102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
     |                                                                                                                             ++++++++++++
@@ -73,9 +47,35 @@ help: first cast to a pointer `as *const ()`
 251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
     |                                                                                                     ++++++++++++
 
-warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 18s
+warning: linker stderr: clang++: argument unused during compilation: '-static-libstdc++' [-Wunused-command-line-argument]
+  |
+  = note: `#[warn(linker_messages)]` on by default
+
+warning: `hachimi` (lib) generated 186 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 47s
 cargo exit=0
--rwxr-xr-x 2 runner runner 14816648 Nov 15 20:09 target/aarch64-linux-android/release/libhachimi.so
+-rwxr-xr-x 2 runner runner 14816648 Nov 15 20:16 target/aarch64-linux-android/release/libhachimi.so
+Dynamic section at offset 0xe1efb8 contains 27 entries:
+  Tag                Type           Name/Value
+  0x0000000000000001 (NEEDED)       Shared library: [liblog.so]
+  0x0000000000000001 (NEEDED)       Shared library: [libdl.so]
+  0x0000000000000001 (NEEDED)       Shared library: [libm.so]
+  0x0000000000000001 (NEEDED)       Shared library: [libc.so]
+  0x000000000000001e (FLAGS)        BIND_NOW 
+  0x000000006ffffffb (FLAGS_1)      NOW 
+  0x0000000000000007 (RELA)         0x14f0
+  0x0000000000000008 (RELASZ)       225840 (bytes)
+  0x0000000000000009 (RELAENT)      24 (bytes)
+  0x000000006ffffff9 (RELACOUNT)    9406
+  0x0000000000000017 (JMPREL)       0x38720
+  0x0000000000000002 (PLTRELSZ)     2856 (bytes)
+  0x0000000000000003 (PLTGOT)       0xe235c0
+  0x0000000000000014 (PLTREL)       RELA
+  0x0000000000000006 (SYMTAB)       0x2d0
+  0x000000000000000b (SYMENT)       24 (bytes)
+  0x0000000000000005 (STRTAB)       0xff4
+  0x000000000000000a (STRSZ)        1273 (bytes)
+--- 未定义 C++ 符号检查 ---
+1
 size: 14816648
 sha256: 72b2fe78554d94988fefff5d4270c788cee6f598fa9aad1e6c30eea1c026b482
