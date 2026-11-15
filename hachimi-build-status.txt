@@ -1,4 +1,23 @@
-run: 43768665804 2026-11-15T22:21:26Z
+run: 43771154063 2026-11-15T22:48:50Z
+
+warning: direct cast of function item into an integer
+   --> src/core/interceptor.rs:102:125
+    |
+100 | ...
+101 | ...
+102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
+    |                                                                ^^^^^^^^
+    |
+   ::: src/android/gui_impl/input_hook.rs:192:5
+    |
+192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
+    |     ---------------------------------------------------- in this macro invocation
+    |
+help: first cast to a pointer `as *const ()`
+    |
+102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
+    |                                                                                                                             ++++++++++++
+
 warning: hiding a lifetime that's elided elsewhere is confusing
    --> src/android/gui_impl/input_hook.rs:205:22
     |
@@ -25,17 +44,8 @@ help: first cast to a pointer `as *const ()`
 251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
     |                                                                                                     ++++++++++++
 
-warning: linker stderr: clang++: argument unused during compilation: '-static-libstdc++' [-Wunused-command-line-argument]
-  |
-  = note: `#[warn(linker_messages)]` on by default
-
-warning: `hachimi` (lib) generated 186 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 22s
+warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 49s
 cargo exit=0
-size=14830408
---- NEEDED（不应出现 libc++_shared）---
-  0x0000000000000001 (NEEDED)       Shared library: [liblog.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libdl.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libm.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libc.so]
-sha256: de3f6cdec4514188fab9f6aa084c1ac432ec14f5b1e62f3efd9bf41faed4510e
+-rwxr-xr-x 2 runner runner 14832848 Nov 15 22:48 target/aarch64-linux-android/release/libhachimi.so
+sha256: 95fcd24cc4b9b224832d028ac2562b8a5ba4276a05d6bc83a81367baa2ac3726
