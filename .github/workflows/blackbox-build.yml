@@ -1,9 +1,8 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ 1b：guest 的 nativeLibraryDir 重定向
-# 思路：guest 进程创建 classloader 之前，把 ApplicationInfo.nativeLibraryDir 指向自建目录；
-#       目录里其它 .so 软链到游戏真实 lib 目录，只有 libmain.so 指向 Hachimi 的 so。
-#       这样游戏的 System.loadLibrary("main") 拿到 Hachimi，其它库仍是原版。
+# BlackBox（Android 16 + 中文）+ Hachimi 以 libmain.so 身份 + libmain_orig.so 原版入口
+# 关键：Hachimi 的 JNI_OnLoad 会 dlopen("libmain_orig.so") 取原版 JNI_OnLoad，
+#       所以 nativelib 目录里必须有 libmain_orig.so → 游戏真实 libmain.so 的软链
 on:
   push:
     paths:
@@ -70,6 +69,7 @@ jobs:
             "        if (processName != null && processName.contains(\"umamusu\")) {\n"
             "            try {\n"
             "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
+            "                String __origDir = applicationInfo.nativeLibraryDir;\n"
             "                java.io.File __hm = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
             "                java.io.File __hmsrc = new java.io.File(\"/sdcard/Download/libmain.so\");\n"
             "                if (__hmsrc.exists() && (!__hm.exists() || __hm.length() != __hmsrc.length())) {\n"
@@ -81,7 +81,7 @@ jobs:
             "                }\n"
             "                java.io.File __nl = new java.io.File(__ctx.getFilesDir(), \"nativelib\");\n"
             "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
-            "                java.io.File __srcDir = new java.io.File(applicationInfo.nativeLibraryDir);\n"
+            "                java.io.File __srcDir = new java.io.File(__origDir);\n"
             "                java.io.File[] __fs = __srcDir.listFiles();\n"
             "                if (__fs != null) {\n"
             "                    for (java.io.File __f : __fs) {\n"
@@ -92,18 +92,23 @@ jobs:
             "                        try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
             "                    }\n"
             "                }\n"
+            "                java.io.File __realMain = new java.io.File(__srcDir, \"libmain.so\");\n"
+            "                java.io.File __origLink = new java.io.File(__nl, \"libmain_orig.so\");\n"
+            "                if (__origLink.exists()) { __origLink.delete(); }\n"
+            "                android.system.Os.symlink(__realMain.getAbsolutePath(), __origLink.getAbsolutePath());\n"
             "                java.io.File __lm = new java.io.File(__nl, \"libmain.so\");\n"
             "                if (__lm.exists()) { __lm.delete(); }\n"
             "                android.system.Os.symlink(__hm.getAbsolutePath(), __lm.getAbsolutePath());\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
-            "                android.util.Log.i(\"BB_INJECT\", \"redirect nativeLibDir -> \" + __nl.getAbsolutePath() + \" libmain.size=\" + __hm.length());\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"redirect -> \" + __nl.getAbsolutePath()\n"
+            "                    + \" libmain=\" + __hm.length() + \" origMain=\" + __realMain.exists());\n"
             "            } catch (Throwable t) {\n"
             "                android.util.Log.e(\"BB_INJECT\", \"redirect failed\", t);\n"
             "            }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
               bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8")
-              print("OK BActivityThread nativeLibDir 重定向")
+              print("OK BActivityThread nativeLibDir + libmain_orig")
           else:
               print("锚点未命中或已打过")
 
@@ -143,8 +148,8 @@ jobs:
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-nldir-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-nldir-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-origmain-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-origmain-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
             echo "发布: 完成" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
