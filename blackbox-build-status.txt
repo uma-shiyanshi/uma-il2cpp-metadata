@@ -1,25 +1,5 @@
-run: 43722040419  2026-11-15T14:06:26Z
---- 末尾 120 行 ---
-	Element uses-permission#android.permission.READ_MEDIA_IMAGES at [:Bcore] AndroidManifest.xml:382:5-76 duplicated with element declared at [:Bcore] AndroidManifest.xml:354:5-76
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:383:5-75 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_VIDEO at [:Bcore] AndroidManifest.xml:383:5-75 duplicated with element declared at [:Bcore] AndroidManifest.xml:355:5-75
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:384:5-75 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_AUDIO at [:Bcore] AndroidManifest.xml:384:5-75 duplicated with element declared at [:Bcore] AndroidManifest.xml:356:5-75
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:385:5-76 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_VISUAL at [:Bcore] AndroidManifest.xml:385:5-76 duplicated with element declared at [:Bcore] AndroidManifest.xml:357:5-76
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:386:5-75 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_AURAL at [:Bcore] AndroidManifest.xml:386:5-75 duplicated with element declared at [:Bcore] AndroidManifest.xml:358:5-75
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:387:5-90 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_IMAGES_USER_SELECTED at [:Bcore] AndroidManifest.xml:387:5-90 duplicated with element declared at [:Bcore] AndroidManifest.xml:359:5-90
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:388:5-89 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_VIDEO_USER_SELECTED at [:Bcore] AndroidManifest.xml:388:5-89 duplicated with element declared at [:Bcore] AndroidManifest.xml:360:5-89
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:389:5-89 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_AUDIO_USER_SELECTED at [:Bcore] AndroidManifest.xml:389:5-89 duplicated with element declared at [:Bcore] AndroidManifest.xml:361:5-89
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:390:5-90 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_VISUAL_USER_SELECTED at [:Bcore] AndroidManifest.xml:390:5-90 duplicated with element declared at [:Bcore] AndroidManifest.xml:324:5-90
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:391:5-89 Warning:
-	Element uses-permission#android.permission.READ_MEDIA_AURAL_USER_SELECTED at [:Bcore] AndroidManifest.xml:391:5-89 duplicated with element declared at [:Bcore] AndroidManifest.xml:325:5-89
-
+run: 43722816601  2026-11-15T14:13:27Z
+--- 末尾 100 行 ---
 > Task :app:processDebugManifest
 > Task :black-reflection:processResources NO-SOURCE
 > Task :black-reflection:classes
@@ -97,8 +77,8 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :Bcore:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
-> Task :app:writeDebugSigningConfigVersions
 > Task :Bcore:copyDebugJniLibsProjectOnly
+> Task :app:writeDebugSigningConfigVersions
 > Task :app:mergeDebugNativeLibs
 > Task :app:stripDebugDebugSymbols
 > Task :app:packageDebug
@@ -113,10 +93,10 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 2m 41s
+BUILD SUCCESSFUL in 3m 1s
 70 actionable tasks: 70 executed
 gradle exit=0
 APK=upstream/app/build/outputs/apk/debug/BlackBox_4.0.0_universal-debug.apk
-输出: 9180790 B
-sha256: 8e4e91782ee630851ebc281c5d17970ad417a13c887bb374a6d42165a2132a6f
+输出: 9179666 B
+sha256: 19e1bc2377e1be1212b264f3dcbb511b77f63d9ae481f9bb843aa5842e4fc3c7
 发布: 完成
