@@ -1,4 +1,10 @@
-run: 43758773323 2026-11-15T20:35:31Z
+run: 43765208793 2026-11-15T21:44:43Z
+    |
+192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
+    |     ---------------------------------------------------- in this macro invocation
+    |
+help: first cast to a pointer `as *const ()`
+    |
 102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
     |                                                                                                                             ++++++++++++
 
@@ -29,13 +35,7 @@ help: first cast to a pointer `as *const ()`
     |                                                                                                     ++++++++++++
 
 warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 27s
+    Finished `release` profile [optimized] target(s) in 1m 17s
 cargo exit=0
-size=14817768
---- NEEDED ---
-  0x0000000000000001 (NEEDED)       Shared library: [liblog.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libdl.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libm.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libc.so]
-  0x0000000000000001 (NEEDED)       Shared library: [libc++_shared.so]
-sha256: 42d6b7c8756155b1356f6030f6b86bd4fb1c96131b9f0d08aaf3cb14efcc528b
+-rwxr-xr-x 2 runner runner 14817704 Nov 15 21:44 target/aarch64-linux-android/release/libhachimi.so
+sha256: 3f22abe3e318b5e4505a5eb3f2ca662cf9a5c0aceac6748f5adc2c122d62aec3
