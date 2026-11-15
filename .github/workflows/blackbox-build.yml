@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 无自动启动版本：容器只做 nativelib 准备 + 配置写入 + 晚加载 Hachimi，游戏由用户自己点开
+# 晚加载 v5：用绝对路径 System.load 触发 Hachimi 的 dlopen 回调（loadLibrary 找不到 nativelib）
 on:
   push:
     paths:
@@ -135,23 +135,29 @@ jobs:
             "                    }\n"
             "                } catch (Throwable __ce) { android.util.Log.e(\"BB_INJECT\", \"cfg failed\", __ce); }\n"
             "                final java.io.File __hFinal = __h;\n"
+            "                final java.io.File __nlFinal = __nl;\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
             "                        Thread.sleep(18000);\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"late loading\");\n"
             "                        System.load(__hFinal.getAbsolutePath());\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late)\");\n"
-            "                        Thread.sleep(1200);\n"
-            "                        try { System.loadLibrary(\"il2cpp\"); android.util.Log.i(\"BB_INJECT\", \"il2cpp re-dlopen ok\"); }\n"
-            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"il2cpp dlopen failed\", __e); }\n"
-            "                        try { System.loadLibrary(\"cri_ware_unity\"); android.util.Log.i(\"BB_INJECT\", \"cri re-dlopen ok\"); }\n"
-            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"cri dlopen failed\", __e); }\n"
+            "                        Thread.sleep(1000);\n"
+            "                        java.io.File __il = new java.io.File(__nlFinal, \"libil2cpp.so\");\n"
+            "                        try { System.load(__il.getAbsolutePath()); android.util.Log.i(\"BB_INJECT\", \"il2cpp trigger ok \" + __il.exists()); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"il2cpp trigger failed\", __e); }\n"
+            "                        Thread.sleep(800);\n"
+            "                        java.io.File __cri = new java.io.File(__nlFinal, \"libcri_ware_unity.so\");\n"
+            "                        try { System.load(__cri.getAbsolutePath()); android.util.Log.i(\"BB_INJECT\", \"cri trigger ok \" + __cri.exists()); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"cri trigger failed\", __e); }\n"
             "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"late load failed\", __t); }\n"
             "                } }).start();\n"
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load, 无自动启动")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v5")
+
+          # 不再注入任何自动启动逻辑
           PY
       - name: 编译
         run: |
@@ -169,8 +175,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-noauto-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-noauto-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-trigger-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-trigger-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
