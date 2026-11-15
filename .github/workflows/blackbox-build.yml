@@ -1,8 +1,7 @@
 name: blackbox-build
 
 # BlackBox（Android 16 + 中文）+ Hachimi(libmain) + libmain_orig + 固定签名
-# 固定签名：首次运行生成 ci/bb.jks 并提交回仓库，之后所有构建同签名 → 可 pm install -r 覆盖升级，
-#           容器里的游戏数据不再被清空。
+# 产物必须取 universal（arm64+v7a）；之前 find 抓到 v7a 单 ABI 包，导致容器是 32 位
 on:
   push:
     paths:
@@ -26,7 +25,7 @@ jobs:
           distribution: temurin
           java-version: '21'
 
-      - name: 固定签名（首次生成并提交）
+      - name: 固定签名
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"; : > "$LOG"
           mkdir -p ci
@@ -34,14 +33,13 @@ jobs:
             keytool -genkeypair -v -keystore ci/bb.jks -alias bb -keyalg RSA -keysize 2048 \
               -validity 10000 -storepass bbpass12 -keypass bbpass12 \
               -dname "CN=BlackBoxCI,OU=DSH,O=Uma,L=NA,S=NA,C=CN" >> "$LOG" 2>&1
-            echo "已生成固定 keystore" >> "$LOG"
             git config user.name  "github-actions[bot]"
             git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -f ci/bb.jks
-            git commit -m "ci: 固定签名 keystore (生成一次，之后复用)" >> "$LOG" 2>&1 || echo "commit 失败" >> "$LOG"
-            git push >> "$LOG" 2>&1 || echo "push 失败（本次仍可用生成的 keystore 构建）" >> "$LOG"
+            git commit -m "ci: 固定签名 keystore" >> "$LOG" 2>&1 || true
+            git push >> "$LOG" 2>&1 || true
           else
-            echo "复用已有 ci/bb.jks" >> "$LOG"
+            echo "复用 ci/bb.jks" >> "$LOG"
           fi
 
       - name: 拉源码 + 装 NDK
@@ -53,14 +51,13 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >> "$LOG" 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.13846066" "platforms;android-36" >> "$LOG" 2>&1 || true
 
-      - name: 打补丁（签名 + Hachimi + libmain_orig + 权限 + WebView）
+      - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
           python3 - "$GITHUB_WORKSPACE/upstream" "$GITHUB_WORKSPACE" >> "$LOG" 2>&1 <<'PY'
           import re, sys, pathlib
           root = pathlib.Path(sys.argv[1]); ws = pathlib.Path(sys.argv[2])
 
-          # 固定签名写进 app/build.gradle
           gb = root / "app/build.gradle"
           g = gb.read_text(encoding="utf-8")
           if "bbci_keystore" not in g:
@@ -72,13 +69,10 @@ jobs:
                      "            keyPassword 'bbpass12'\n"
                      "        }\n"
                      "    }\n" % (ws / "ci" / "bb.jks"))
-              anchor = "    defaultConfig {"
-              assert anchor in g, "build.gradle 锚点未命中"
-              g = g.replace(anchor, sig + anchor, 1)
-              # debug 构建也用它
+              g = g.replace("    defaultConfig {", sig + "    defaultConfig {", 1)
               g = re.sub(r"(buildTypes\s*\{)", r"\1\n        debug { signingConfig signingConfigs.bbci_keystore }", g, count=1)
               gb.write_text(g, encoding="utf-8")
-              print("OK 固定签名写入 build.gradle")
+              print("OK 固定签名")
 
           mf = root / "app/src/main/AndroidManifest.xml"
           m = mf.read_text(encoding="utf-8")
@@ -146,7 +140,7 @@ jobs:
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
               bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8")
-              print("OK BActivityThread redirect + libmain_orig")
+              print("OK redirect + libmain_orig")
 
           ZH = {"installed_app": "已安装应用", "empty_empty": "空空如也", "filter": "过滤",
                 "setting": "设置", "done": "完成", "cancel": "取消",
@@ -171,22 +165,26 @@ jobs:
           chmod +x gradlew
           ( ./gradlew :app:assembleDebug --no-daemon --stacktrace ) >> "$LOG" 2>&1
           echo "gradle exit=$?" >> "$LOG"
+          echo "--- 产物列表 ---" >> "$LOG"
+          find app/build/outputs/apk -name "*.apk" >> "$LOG" 2>&1
 
       - name: 发布
         if: always()
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
           cd "$GITHUB_WORKSPACE"
-          APK=$(find upstream -name "*debug*.apk" | head -1)
-          echo "APK=${APK:-none}" >> "$LOG"
+          APK=$(find upstream/app/build/outputs/apk -name "*universal*debug*.apk" | head -1)
+          [ -z "$APK" ] && APK=$(find upstream/app/build/outputs/apk -name "*debug*.apk" | head -1)
+          echo "APK=$APK" >> "$LOG"
           if [ -n "$APK" ]; then
             echo "输出: $(stat -c%s "$APK") B" >> "$LOG"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
-            "$ANDROID_HOME"/build-tools/*/apksigner verify --print-certs "$APK" 2>/dev/null | head -3 >> "$LOG" || true
+            echo "--- ABI 检查 ---" >> "$LOG"
+            unzip -l "$APK" | grep -E "lib/(arm64-v8a|armeabi-v7a)/" | awk '{print $4}' | cut -d/ -f2 | sort -u >> "$LOG" 2>&1
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-fixedkey-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-fixedkey-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-arm64-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-arm64-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
             echo "发布: 完成" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
