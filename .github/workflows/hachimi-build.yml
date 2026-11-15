@@ -1,0 +1,102 @@
+name: hachimi-build
+
+# 从源码构建 Hachimi（Unity2020 分支），加一个 disable_dlopen_hook 开关
+# 目的：容器里 do_dlopen 被 inline hook 后，游戏批量加载 so 会 SIGSEGV；关掉它才能继续
+on:
+  push:
+    paths:
+      - '.github/workflows/hachimi-build.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Rust + Android target
+        run: |
+          LOG="$GITHUB_WORKSPACE/h.log"; : > "$LOG"
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal >> "$LOG" 2>&1
+          . "$HOME/.cargo/env"
+          rustup target add aarch64-linux-android >> "$LOG" 2>&1
+          rustc --version >> "$LOG" 2>&1
+
+      - name: 拉 Hachimi 源码（2020 分支）
+        run: |
+          LOG="$GITHUB_WORKSPACE/h.log"
+          git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
+          echo "commit: $(git -C "$GITHUB_WORKSPACE/hz" rev-parse --short HEAD)" >> "$LOG"
+
+      - name: 打补丁（disable_dlopen_hook）
+        run: |
+          LOG="$GITHUB_WORKSPACE/h.log"
+          python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
+          import sys, pathlib
+          root = pathlib.Path(sys.argv[1])
+
+          cfg = root / "src/core/hachimi.rs"
+          t = cfg.read_text(encoding="utf-8")
+          if "disable_dlopen_hook" not in t:
+              anchor = "    pub disable_gui_once: bool,"
+              assert anchor in t, "Config 锚点未命中"
+              t = t.replace(anchor, anchor + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1)
+              cfg.write_text(t, encoding="utf-8")
+              print("OK Config.disable_dlopen_hook")
+
+          hk = root / "src/android/hook.rs"
+          h = hk.read_text(encoding="utf-8")
+          old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
+                 '    hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;')
+          new = ('    if !hachimi.config.load().disable_dlopen_hook {\n'
+                 '        info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
+                 '        hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;\n'
+                 '    } else {\n'
+                 '        info!("dlopen hook disabled by config");\n'
+                 '    }')
+          assert old in h, "hook.rs 锚点未命中"
+          hk.write_text(h.replace(old, new, 1), encoding="utf-8")
+          print("OK hook.rs 开关")
+          PY
+
+      - name: 交叉编译
+        run: |
+          LOG="$GITHUB_WORKSPACE/h.log"
+          . "$HOME/.cargo/env"
+          NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
+          echo "NDK=$NDK" >> "$LOG"
+          TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
+          export CC_aarch64_linux_android="$TC/aarch64-linux-android26-clang"
+          export AR_aarch64_linux_android="$TC/llvm-ar"
+          export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang"
+          cd "$GITHUB_WORKSPACE/hz"
+          cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
+          echo "cargo exit=$?" >> "$LOG"
+          ls -l target/aarch64-linux-android/release/*.so >> "$LOG" 2>&1
+
+      - name: 发布
+        if: always()
+        run: |
+          LOG="$GITHUB_WORKSPACE/h.log"
+          SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
+          if [ -f "$SO" ]; then
+            echo "size: $(stat -c%s "$SO")" >> "$LOG"
+            echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
+            gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
+              gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
+            cp "$SO" "libmain-nodlopen-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libmain-nodlopen-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+          else
+            echo "编译产物不存在" >> "$LOG"
+          fi
+          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 80 "$LOG"; } > hachimi-build-status.txt
+          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add hachimi-build-status.txt || true
+          git commit -m "ci: hachimi build ($GITHUB_RUN_ID)" || echo "no change"
+          git pull --rebase --autostash >> /dev/null 2>&1 || true
+          git push || { sleep 5; git pull --rebase --autostash >> /dev/null 2>&1 || true; git push; } || true
