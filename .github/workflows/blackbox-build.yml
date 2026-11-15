@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载方案 v2：强制把 nativelib/libmain.so 重置为原版（修掉历史 symlink 残留）
+# 晚加载 v3：Hachimi 放到 nativelib/ 内加载（依赖 libc++_shared 才能被解析）
 on:
   push:
     paths:
@@ -81,7 +81,9 @@ jobs:
             "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
             "                java.io.File __srcDir = new java.io.File(applicationInfo.nativeLibraryDir);\n"
             "                java.io.File __realMain = new java.io.File(__srcDir, \"libmain.so\");\n"
-            "                java.io.File __h = new java.io.File(__ctx.getFilesDir(), \"libhachimi.so\");\n"
+            "                java.io.File __nl = new java.io.File(__ctx.getFilesDir(), \"nativelib\");\n"
+            "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
+            "                java.io.File __h = new java.io.File(__nl, \"libhachimi.so\");\n"
             "                java.io.File __hsrc = new java.io.File(\"/sdcard/Download/libhachimi.so\");\n"
             "                if (__hsrc.exists() && (!__h.exists() || __h.length() != __hsrc.length())) {\n"
             "                    java.io.InputStream __in = new java.io.FileInputStream(__hsrc);\n"
@@ -90,8 +92,6 @@ jobs:
             "                    while ((__n = __in.read(__buf)) > 0) { __out.write(__buf, 0, __n); }\n"
             "                    __in.close(); __out.close();\n"
             "                }\n"
-            "                java.io.File __nl = new java.io.File(__ctx.getFilesDir(), \"nativelib\");\n"
-            "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
             "                java.io.File[] __fs = __srcDir.listFiles();\n"
             "                if (__fs != null) for (java.io.File __f : __fs) {\n"
             "                    if (!__f.getName().endsWith(\".so\")) continue;\n"
@@ -103,13 +103,15 @@ jobs:
             "                java.io.File __lm = new java.io.File(__nl, \"libmain.so\");\n"
             "                if (__lm.exists()) __lm.delete();\n"
             "                android.system.Os.symlink(__realMain.getAbsolutePath(), __lm.getAbsolutePath());\n"
-            "                java.io.File __origLink = new java.io.File(__nl, \"libmain_orig.so\");\n"
-            "                if (__origLink.exists()) __origLink.delete();\n"
-            "                android.system.Os.symlink(__realMain.getAbsolutePath(), __origLink.getAbsolutePath());\n"
-            "                java.io.File __staleFile = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
-            "                if (__staleFile.exists()) __staleFile.delete();\n"
+            "                java.io.File __ol = new java.io.File(__nl, \"libmain_orig.so\");\n"
+            "                if (__ol.exists()) __ol.delete();\n"
+            "                android.system.Os.symlink(__realMain.getAbsolutePath(), __ol.getAbsolutePath());\n"
+            "                java.io.File __stale = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
+            "                if (__stale.exists()) __stale.delete();\n"
+            "                java.io.File __stale2 = new java.io.File(__ctx.getFilesDir(), \"libhachimi.so\");\n"
+            "                if (__stale2.exists()) __stale2.delete();\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
-            "                android.util.Log.i(\"BB_INJECT\", \"nativelib reset: libmain->original, hachimi=\" + __h.length());\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"nativelib ready hachimi=\" + __h.length() + \" cxx=\" + new java.io.File(__nl, \"libc++_shared.so\").exists());\n"
             "                try {\n"
             "                    java.io.File __cfgSrc = new java.io.File(\"/sdcard/Download/hachimi_config.json\");\n"
             "                    java.io.File __cfgDir = new java.io.File(\"/sdcard/Android/media/com.bilibili.umamusu/hachimi\");\n"
@@ -128,7 +130,7 @@ jobs:
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
             "                        Thread.sleep(20000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late loading hachimi...\");\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"late loading \" + __hFinal.getAbsolutePath());\n"
             "                        System.load(__hFinal.getAbsolutePath());\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late)\");\n"
             "                        Thread.sleep(1500);\n"
@@ -141,7 +143,7 @@ jobs:
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v2")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v3")
 
           app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
           a2 = app.read_text(encoding="utf-8")
@@ -182,8 +184,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-lateload2-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-lateload2-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-lateload3-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-lateload3-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
