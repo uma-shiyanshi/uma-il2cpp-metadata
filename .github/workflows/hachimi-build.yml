@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# Hachimi 源码构建：disable_dlopen_hook 开关 + 显式静态 C++ 运行库
+# Hachimi 源码构建：disable_dlopen_hook + passthrough_only（纯透传，用于隔离 SIGBUS 责任）
 on:
   push:
     paths:
@@ -17,34 +17,31 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-
       - name: Rust + Android target
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"; : > "$LOG"
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal >> "$LOG" 2>&1
           . "$HOME/.cargo/env"
           rustup target add aarch64-linux-android >> "$LOG" 2>&1
-
       - name: 拉源码
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
           echo "commit: $(git -C "$GITHUB_WORKSPACE/hz" rev-parse --short HEAD)" >> "$LOG"
-          echo "--- 依赖里有没有 cc/cxx:" >> "$LOG"
-          (cd "$GITHUB_WORKSPACE/hz" && grep -nE "^(cc|cxx|cpp|oboe|jni)" Cargo.toml) >> "$LOG" 2>&1 || true
-
       - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
+
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "disable_dlopen_hook" not in t:
               a = "    pub disable_gui_once: bool,"
-              cfg.write_text(t.replace(a, a + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1), encoding="utf-8")
-              print("OK Config")
+              t = t.replace(a, a + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,\n    #[serde(default)]\n    pub passthrough_only: bool,", 1)
+              cfg.write_text(t, encoding="utf-8"); print("OK Config(+2 flags)")
+
           hk = root / "src/android/hook.rs"
           h = hk.read_text(encoding="utf-8")
           old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
@@ -55,10 +52,26 @@ jobs:
                  '    } else {\n'
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
-          hk.write_text(h.replace(old, new, 1), encoding="utf-8")
-          print("OK hook.rs")
-          PY
+          assert old in h
+          hk.write_text(h.replace(old, new, 1), encoding="utf-8"); print("OK hook.rs")
 
+          mn = root / "src/android/main.rs"
+          m = mn.read_text(encoding="utf-8")
+          old2 = ("    let env = vm.get_env().unwrap();\n"
+                  "    hook::init(env.get_raw());\n"
+                  "\n"
+                  '    info!("JNI_OnLoad");\n')
+          new2 = ("    if Hachimi::instance().config.load().passthrough_only {\n"
+                  '        info!("passthrough_only: skip hook::init");\n'
+                  "        return orig_fn(vm, reserved);\n"
+                  "    }\n"
+                  "    let env = vm.get_env().unwrap();\n"
+                  "    hook::init(env.get_raw());\n"
+                  "\n"
+                  '    info!("JNI_OnLoad");\n')
+          assert old2 in m, "main.rs 锚点未命中"
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK main.rs passthrough")
+          PY
       - name: 交叉编译
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
@@ -70,17 +83,11 @@ jobs:
           export AR_aarch64_linux_android="$TC/llvm-ar"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
           export CXXSTDLIB="c++_static"
-          export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi -C link-arg=-static-libstdc++"
+          export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
           cd "$GITHUB_WORKSPACE/hz"
           cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
           echo "cargo exit=$?" >> "$LOG"
-          SO=target/aarch64-linux-android/release/libhachimi.so
-          echo "size=$(stat -c%s $SO 2>/dev/null)" >> "$LOG"
-          echo "--- NEEDED ---" >> "$LOG"
-          "$TC/llvm-readelf" -d "$SO" | grep -E "NEEDED|SONAME" >> "$LOG" 2>&1
-          echo "--- _Znwm 状态（DEF=已定义 / UND=未定义）---" >> "$LOG"
-          "$TC/llvm-readelf" -s "$SO" | grep -E "_Znwm|_ZdlPv" | head -5 >> "$LOG" 2>&1
-
+          ls -l target/aarch64-linux-android/release/libhachimi.so >> "$LOG" 2>&1
       - name: 发布
         if: always()
         run: |
@@ -90,12 +97,12 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libmain-nodlopen3-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libmain-nodlopen3-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libmain-passthru-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libmain-passthru-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           else
             echo "无产物" >> "$LOG"
           fi
-          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 60 "$LOG"; } > hachimi-build-status.txt
+          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hachimi-build-status.txt || true
           git commit -m "ci: hachimi build ($GITHUB_RUN_ID)" || echo "no change"
