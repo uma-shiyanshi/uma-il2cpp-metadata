@@ -1,7 +1,5 @@
-run: 43720523708  2026-11-15T13:47:40Z
+run: 43722040419  2026-11-15T14:06:26Z
 --- 末尾 120 行 ---
-	Element uses-permission#android.permission.NEARBY_WIFI_DEVICES at [:Bcore] AndroidManifest.xml:381:5-78 duplicated with element declared at [:Bcore] AndroidManifest.xml:353:5-78
-[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:382:5-76 Warning:
 	Element uses-permission#android.permission.READ_MEDIA_IMAGES at [:Bcore] AndroidManifest.xml:382:5-76 duplicated with element declared at [:Bcore] AndroidManifest.xml:354:5-76
 [:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:383:5-75 Warning:
 	Element uses-permission#android.permission.READ_MEDIA_VIDEO at [:Bcore] AndroidManifest.xml:383:5-75 duplicated with element declared at [:Bcore] AndroidManifest.xml:355:5-75
@@ -43,11 +41,8 @@ run: 43720523708  2026-11-15T13:47:40Z
 > Task :Bcore:mergeDebugAssets
 > Task :app:mergeDebugAssets
 > Task :app:compressDebugAssets
-> Task :app:mergeDebugJniLibFolders
-> Task :app:checkDebugDuplicateClasses
-> Task :app:desugarDebugFileDependencies
 > Task :Bcore:compileDebugAidl
-> Task :Bcore:configureNdkBuildDebug[arm64-v8a]
+> Task :app:desugarDebugFileDependencies
 
 > Task :Bcore:compileDebugJavaWithJavac
 The following annotation processors are not incremental: compiler.jar (project :compiler).
@@ -60,21 +55,12 @@ Note: Recompile with -Xlint:unchecked for details.
 1 warning
 
 > Task :Bcore:processDebugJavaRes
-> Task :Bcore:bundleLibCompileToJarDebug
 > Task :Bcore:bundleLibRuntimeToJarDebug
+> Task :Bcore:bundleLibCompileToJarDebug
+> Task :app:checkDebugDuplicateClasses
+> Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
-> Task :app:mergeLibDexDebug
-> Task :Bcore:buildNdkBuildDebug[arm64-v8a]
-> Task :Bcore:configureNdkBuildDebug[armeabi-v7a]
-> Task :Bcore:buildNdkBuildDebug[armeabi-v7a]
-> Task :Bcore:mergeDebugJniLibFolders
-> Task :Bcore:mergeDebugNativeLibs
-> Task :app:validateSigningDebug
-> Task :app:writeDebugAppMetadata
-> Task :Bcore:copyDebugJniLibsProjectOnly
-> Task :app:writeDebugSigningConfigVersions
-> Task :app:mergeDebugNativeLibs
-> Task :app:stripDebugDebugSymbols
+
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/app/AppManager.kt:63:34 Parameter 'context' is never used
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/biz/cache/AppSharedPreferenceDelegate.kt:48:27 Unchecked cast: Any to Data
@@ -99,8 +85,22 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:dexBuilderDebug
 > Task :app:mergeDebugGlobalSynthetics
 > Task :app:processDebugJavaRes
+> Task :app:mergeDebugJniLibFolders
 > Task :app:mergeProjectDexDebug
+> Task :app:mergeLibDexDebug
 > Task :app:mergeDebugJavaResource
+> Task :Bcore:configureNdkBuildDebug[arm64-v8a]
+> Task :Bcore:buildNdkBuildDebug[arm64-v8a]
+> Task :Bcore:configureNdkBuildDebug[armeabi-v7a]
+> Task :Bcore:buildNdkBuildDebug[armeabi-v7a]
+> Task :Bcore:mergeDebugJniLibFolders
+> Task :Bcore:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :app:writeDebugSigningConfigVersions
+> Task :Bcore:copyDebugJniLibsProjectOnly
+> Task :app:mergeDebugNativeLibs
+> Task :app:stripDebugDebugSymbols
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
@@ -113,10 +113,10 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 2m 55s
+BUILD SUCCESSFUL in 2m 41s
 70 actionable tasks: 70 executed
 gradle exit=0
 APK=upstream/app/build/outputs/apk/debug/BlackBox_4.0.0_universal-debug.apk
-输出: 9181604 B
-sha256: 65b619475469ff80942295d1459985aba5839c562088d177d05a95075f749015
+输出: 9180790 B
+sha256: 8e4e91782ee630851ebc281c5d17970ad417a13c887bb374a6d42165a2132a6f
 发布: 完成
