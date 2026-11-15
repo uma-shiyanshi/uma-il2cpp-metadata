@@ -1,0 +1,81 @@
+run: 43756331385 2026-11-15T20:09:59Z
+    |                                                                ^^^^^^^^
+    |
+   ::: src/android/gui_impl/input_hook.rs:180:24
+    |
+180 |                 return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event);
+    |                        ---------------------------------------------------- in this macro invocation
+    |
+help: first cast to a pointer `as *const ()`
+    |
+102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
+    |                                                                                                                             ++++++++++++
+
+warning: direct cast of function item into an integer
+   --> src/core/interceptor.rs:102:125
+    |
+100 | ...
+101 | ...
+102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
+    |                                                                ^^^^^^^^
+    |
+   ::: src/android/gui_impl/input_hook.rs:186:24
+    |
+186 |                 return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event);
+    |                        ---------------------------------------------------- in this macro invocation
+    |
+help: first cast to a pointer `as *const ()`
+    |
+102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
+    |                                                                                                                             ++++++++++++
+
+warning: direct cast of function item into an integer
+   --> src/core/interceptor.rs:102:125
+    |
+100 | ...
+101 | ...
+102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
+    |                                                                ^^^^^^^^
+    |
+   ::: src/android/gui_impl/input_hook.rs:192:5
+    |
+192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
+    |     ---------------------------------------------------- in this macro invocation
+    |
+help: first cast to a pointer `as *const ()`
+    |
+102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
+    |                                                                                                                             ++++++++++++
+
+warning: hiding a lifetime that's elided elsewhere is confusing
+   --> src/android/gui_impl/input_hook.rs:205:22
+    |
+205 | fn get_view(mut env: JNIEnv) -> JObject<'_> {
+    |                      ^^^^^^             ^^ the same lifetime is elided here
+    |                      |
+    |                      the lifetime is hidden here
+    |
+    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
+    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
+help: consistently use `'_`
+    |
+205 | fn get_view(mut env: JNIEnv<'_>) -> JObject<'_> {
+    |                            ++++
+
+warning: direct cast of function item into an integer
+   --> src/android/gui_impl/input_hook.rs:251:101
+    |
+251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as usize)?;
+    |                                                                                                     ^^^^^^^^
+    |
+help: first cast to a pointer `as *const ()`
+    |
+251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
+    |                                                                                                     ++++++++++++
+
+warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 18s
+cargo exit=0
+-rwxr-xr-x 2 runner runner 14816648 Nov 15 20:09 target/aarch64-linux-android/release/libhachimi.so
+size: 14816648
+sha256: 72b2fe78554d94988fefff5d4270c788cee6f598fa9aad1e6c30eea1c026b482
