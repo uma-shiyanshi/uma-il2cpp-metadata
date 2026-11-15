@@ -1,8 +1,6 @@
 name: blackbox-build
 
-# BlackBox + Hachimi + 标记驱动导入/启动 + 启动前写入 Hachimi 配置
-# 配置来源：/sdcard/Download/hachimi_config.json（由我们控制），启动前复制到
-#           /sdcard/Android/media/com.bilibili.umamusu/hachimi/config.json（由本 App 自己创建，guest 可读）
+# BlackBox + Hachimi + 标记驱动；配置由 **guest 进程自己** 写入并自检可读性
 on:
   push:
     paths:
@@ -26,21 +24,18 @@ jobs:
           java-version: '21'
       - name: 固定签名
         run: |
-          LOG="$GITHUB_WORKSPACE/b.log"; : > "$LOG"
-          mkdir -p ci
+          LOG="$GITHUB_WORKSPACE/b.log"; : > "$LOG"; mkdir -p ci
           if [ ! -f ci/bb.jks ]; then
             keytool -genkeypair -v -keystore ci/bb.jks -alias bb -keyalg RSA -keysize 2048 \
               -validity 10000 -storepass bbpass12 -keypass bbpass12 \
               -dname "CN=BlackBoxCI,OU=DSH,O=Uma,L=NA,S=NA,C=CN" >> "$LOG" 2>&1
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
             git add -f ci/bb.jks && git commit -m "ci: keystore" >> "$LOG" 2>&1 || true
             git push >> "$LOG" 2>&1 || true
           fi
       - name: 拉源码 + 装 NDK
         run: |
-          LOG="$GITHUB_WORKSPACE/b.log"
-          UP="$GITHUB_WORKSPACE/upstream"
+          LOG="$GITHUB_WORKSPACE/b.log"; UP="$GITHUB_WORKSPACE/upstream"
           git clone --depth 1 https://github.com/ALEX5402/NewBlackbox.git "$UP" >> "$LOG" 2>&1
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >> "$LOG" 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.13846066" "platforms;android-36" >> "$LOG" 2>&1 || true
@@ -113,11 +108,28 @@ jobs:
             "                if (__lm.exists()) __lm.delete();\n"
             "                android.system.Os.symlink(__hm.getAbsolutePath(), __lm.getAbsolutePath());\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
-            "                android.util.Log.i(\"BB_INJECT\", \"redirect ok libmain=\" + __hm.length() + \" origMain=\" + __realMain.exists());\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"redirect ok libmain=\" + __hm.length());\n"
+            "                try {\n"
+            "                    java.io.File __cfgSrc = new java.io.File(\"/sdcard/Download/hachimi_config.json\");\n"
+            "                    java.io.File __cfgDir = new java.io.File(\"/sdcard/Android/media/com.bilibili.umamusu/hachimi\");\n"
+            "                    if (!__cfgDir.exists()) __cfgDir.mkdirs();\n"
+            "                    java.io.File __cfgDst = new java.io.File(__cfgDir, \"config.json\");\n"
+            "                    android.util.Log.i(\"BB_INJECT\", \"cfg srcReadable=\" + __cfgSrc.canRead()\n"
+            "                        + \" dirWritable=\" + __cfgDir.canWrite() + \" dstExists=\" + __cfgDst.exists());\n"
+            "                    if (__cfgSrc.canRead()) {\n"
+            "                        java.io.InputStream __ci = new java.io.FileInputStream(__cfgSrc);\n"
+            "                        java.io.OutputStream __co = new java.io.FileOutputStream(__cfgDst);\n"
+            "                        byte[] __cb = new byte[8192]; int __cn;\n"
+            "                        while ((__cn = __ci.read(__cb)) > 0) { __co.write(__cb, 0, __cn); }\n"
+            "                        __ci.close(); __co.close();\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"cfg written len=\" + __cfgDst.length()\n"
+            "                            + \" canReadBack=\" + __cfgDst.canRead());\n"
+            "                    }\n"
+            "                } catch (Throwable __ce) { android.util.Log.e(\"BB_INJECT\", \"cfg failed\", __ce); }\n"
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"redirect failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK redirect")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK redirect+cfg(guest)")
 
           app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
           a2 = app.read_text(encoding="utf-8")
@@ -129,18 +141,6 @@ jobs:
             "                    Thread.sleep(3000)\n"
             "                    val mark = java.io.File(filesDir, \"dsh-auto-launch\")\n"
             "                    if (mark.exists()) {\n"
-            "                        try {\n"
-            "                            val src = java.io.File(\"/sdcard/Download/hachimi_config.json\")\n"
-            "                            val dir = java.io.File(\"/sdcard/Android/media/com.bilibili.umamusu/hachimi\")\n"
-            "                            if (!dir.exists()) dir.mkdirs()\n"
-            "                            val dst = java.io.File(dir, \"config.json\")\n"
-            "                            if (src.exists()) {\n"
-            "                                src.inputStream().use { i -> dst.outputStream().use { o -> i.copyTo(o) } }\n"
-            "                                android.util.Log.i(\"BB_AUTO\", \"cfg copied len=\" + dst.length())\n"
-            "                            } else {\n"
-            "                                android.util.Log.i(\"BB_AUTO\", \"cfg src missing\")\n"
-            "                            }\n"
-            "                        } catch (e: Throwable) { android.util.Log.e(\"BB_AUTO\", \"cfg failed\", e) }\n"
             "                        val core = BlackBoxCore.get()\n"
             "                        val la = core.getInstalledApplications(0, 0)\n"
             "                        if (la == null || la.isEmpty()) {\n"
@@ -149,14 +149,12 @@ jobs:
             "                            Thread.sleep(1500)\n"
             "                        }\n"
             "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + core.launchApk(\"com.bilibili.umamusu\", 0))\n"
-            "                    } else {\n"
-            "                        android.util.Log.i(\"BB_AUTO\", \"marker absent\")\n"
-            "                    }\n"
+            "                    } else android.util.Log.i(\"BB_AUTO\", \"marker absent\")\n"
             "                } catch (t: Throwable) { android.util.Log.e(\"BB_AUTO\", \"auto failed\", t) }\n"
             "            }.start()\n"
             "            }\n" + old)
           if old in a2 and "BB_AUTO" not in a2:
-              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto+cfg")
+              app.write_text(a2.replace(old, auto, 1), encoding="utf-8"); print("OK auto")
           PY
       - name: 编译
         run: |
@@ -174,8 +172,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-cfg-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-cfg-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-guestcfg-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-guestcfg-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
