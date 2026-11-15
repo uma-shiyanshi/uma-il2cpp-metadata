@@ -1,8 +1,7 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ Hachimi(libmain/libmain_orig) + 标记触发自动启动
-# 自动启动：仅当 /sdcard/Download/dsh-auto-launch 存在时，主进程延迟 4s 调 launchApk，
-#           方便无人值守做 hook 二分测试；默认不触发。
+# BlackBox（Android 16 + 中文）+ Hachimi(libmain/libmain_orig) + 私有目录标记触发自动启动
+# 自动启动：仅当 App 私有目录下存在 dsh-auto-launch 文件时启动游戏；可用 run-as 创建
 on:
   push:
     paths:
@@ -39,8 +38,6 @@ jobs:
             git add -f ci/bb.jks
             git commit -m "ci: 固定签名 keystore" >> "$LOG" 2>&1 || true
             git push >> "$LOG" 2>&1 || true
-          else
-            echo "复用 ci/bb.jks" >> "$LOG"
           fi
 
       - name: 拉源码 + 装 NDK
@@ -146,8 +143,8 @@ jobs:
             "            Thread {\n"
             "                try {\n"
             "                    Thread.sleep(4000)\n"
-            "                    val mark = java.io.File(\"/sdcard/Download/dsh-auto-launch\")\n"
-            "                    android.util.Log.i(\"BB_AUTO\", \"marker=\" + mark.exists())\n"
+            "                    val mark = java.io.File(filesDir, \"dsh-auto-launch\")\n"
+            "                    android.util.Log.i(\"BB_AUTO\", \"marker=\" + mark.exists() + \" path=\" + mark.absolutePath)\n"
             "                    if (mark.exists()) {\n"
             "                        val r = BlackBoxCore.get().launchApk(\"com.bilibili.umamusu\", 0)\n"
             "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + r)\n"
@@ -159,7 +156,7 @@ jobs:
             "            }\n" + old)
           if old in a2 and "BB_AUTO" not in a2:
               app.write_text(a2.replace(old, auto, 1), encoding="utf-8")
-              print("OK 标记触发自动启动")
+              print("OK 私有目录标记自动启动")
           PY
 
       - name: 编译
@@ -180,11 +177,10 @@ jobs:
           if [ -n "$APK" ]; then
             echo "输出: $(stat -c%s "$APK") B" >> "$LOG"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
-            unzip -l "$APK" | grep -E "lib/(arm64-v8a|armeabi-v7a)/" | awk '{print $4}' | cut -d/ -f2 | sort -u >> "$LOG" 2>&1
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-autoflag-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-autoflag-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-privflag-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-privflag-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; tail -n 60 "$LOG"; } > blackbox-build-status.txt
           git config user.name  "github-actions[bot]"
