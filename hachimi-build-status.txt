@@ -1,7 +1,4 @@
-run: 43756962299 2026-11-15T20:16:55Z
-    |
-102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
-    |                                                                                                                             ++++++++++++
+run: 43757489531 2026-11-15T20:22:04Z
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:102:125
@@ -52,30 +49,13 @@ warning: linker stderr: clang++: argument unused during compilation: '-static-li
   = note: `#[warn(linker_messages)]` on by default
 
 warning: `hachimi` (lib) generated 186 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 47s
+    Finished `release` profile [optimized] target(s) in 1m 28s
 cargo exit=0
--rwxr-xr-x 2 runner runner 14816648 Nov 15 20:16 target/aarch64-linux-android/release/libhachimi.so
-Dynamic section at offset 0xe1efb8 contains 27 entries:
-  Tag                Type           Name/Value
+size=14829504
+--- NEEDED ---
   0x0000000000000001 (NEEDED)       Shared library: [liblog.so]
   0x0000000000000001 (NEEDED)       Shared library: [libdl.so]
   0x0000000000000001 (NEEDED)       Shared library: [libm.so]
   0x0000000000000001 (NEEDED)       Shared library: [libc.so]
-  0x000000000000001e (FLAGS)        BIND_NOW 
-  0x000000006ffffffb (FLAGS_1)      NOW 
-  0x0000000000000007 (RELA)         0x14f0
-  0x0000000000000008 (RELASZ)       225840 (bytes)
-  0x0000000000000009 (RELAENT)      24 (bytes)
-  0x000000006ffffff9 (RELACOUNT)    9406
-  0x0000000000000017 (JMPREL)       0x38720
-  0x0000000000000002 (PLTRELSZ)     2856 (bytes)
-  0x0000000000000003 (PLTGOT)       0xe235c0
-  0x0000000000000014 (PLTREL)       RELA
-  0x0000000000000006 (SYMTAB)       0x2d0
-  0x000000000000000b (SYMENT)       24 (bytes)
-  0x0000000000000005 (STRTAB)       0xff4
-  0x000000000000000a (STRSZ)        1273 (bytes)
---- 未定义 C++ 符号检查 ---
-1
-size: 14816648
-sha256: 72b2fe78554d94988fefff5d4270c788cee6f598fa9aad1e6c30eea1c026b482
+--- _Znwm 状态（DEF=已定义 / UND=未定义）---
+sha256: 98af454d0ec47dad52c65c5085d71fde952a8c6e04eae21d626bfa5d578460bd
