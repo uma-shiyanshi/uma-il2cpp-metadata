@@ -1,4 +1,4 @@
-run: 43722816601  2026-11-15T14:13:27Z
+run: 43744189448  2026-11-15T18:03:35Z
 --- 末尾 100 行 ---
 > Task :app:processDebugManifest
 > Task :black-reflection:processResources NO-SOURCE
@@ -77,8 +77,8 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :Bcore:mergeDebugNativeLibs
 > Task :app:validateSigningDebug
 > Task :app:writeDebugAppMetadata
-> Task :Bcore:copyDebugJniLibsProjectOnly
 > Task :app:writeDebugSigningConfigVersions
+> Task :Bcore:copyDebugJniLibsProjectOnly
 > Task :app:mergeDebugNativeLibs
 > Task :app:stripDebugDebugSymbols
 > Task :app:packageDebug
@@ -93,10 +93,10 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 3m 1s
+BUILD SUCCESSFUL in 2m 52s
 70 actionable tasks: 70 executed
 gradle exit=0
 APK=upstream/app/build/outputs/apk/debug/BlackBox_4.0.0_universal-debug.apk
-输出: 9179666 B
-sha256: 19e1bc2377e1be1212b264f3dcbb511b77f63d9ae481f9bb843aa5842e4fc3c7
+输出: 9179802 B
+sha256: c6c9f65e45dac241dc9657683e0a3d4cf15faf1ada4ab0cdbdab26c621fc723f
 发布: 完成
