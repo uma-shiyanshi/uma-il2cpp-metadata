@@ -1,5 +1,7 @@
-run: 42952649719  2026-11-11T03:29:22Z
+run: 43720523708  2026-11-15T13:47:40Z
 --- 末尾 120 行 ---
+	Element uses-permission#android.permission.NEARBY_WIFI_DEVICES at [:Bcore] AndroidManifest.xml:381:5-78 duplicated with element declared at [:Bcore] AndroidManifest.xml:353:5-78
+[:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:382:5-76 Warning:
 	Element uses-permission#android.permission.READ_MEDIA_IMAGES at [:Bcore] AndroidManifest.xml:382:5-76 duplicated with element declared at [:Bcore] AndroidManifest.xml:354:5-76
 [:Bcore] /home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/Bcore/build/intermediates/merged_manifest/debug/processDebugManifest/AndroidManifest.xml:383:5-75 Warning:
 	Element uses-permission#android.permission.READ_MEDIA_VIDEO at [:Bcore] AndroidManifest.xml:383:5-75 duplicated with element declared at [:Bcore] AndroidManifest.xml:355:5-75
@@ -24,13 +26,14 @@ run: 42952649719  2026-11-11T03:29:22Z
 > Task :black-reflection:processResources NO-SOURCE
 > Task :black-reflection:classes
 > Task :black-reflection:jar
+> Task :app:processDebugManifestForPackage
+> Task :app:processDebugResources
 > Task :compiler:compileJava
 > Task :compiler:processResources NO-SOURCE
 > Task :compiler:classes
 > Task :compiler:jar
-> Task :Bcore:javaPreCompileDebug
-> Task :app:processDebugManifestForPackage
 > Task :app:javaPreCompileDebug
+> Task :Bcore:javaPreCompileDebug
 > Task :app:mergeDebugShaders
 > Task :app:compileDebugShaders NO-SOURCE
 > Task :app:generateDebugAssets UP-TO-DATE
@@ -38,9 +41,13 @@ run: 42952649719  2026-11-11T03:29:22Z
 > Task :Bcore:compileDebugShaders NO-SOURCE
 > Task :Bcore:generateDebugAssets UP-TO-DATE
 > Task :Bcore:mergeDebugAssets
-> Task :Bcore:compileDebugAidl
 > Task :app:mergeDebugAssets
-> Task :app:processDebugResources
+> Task :app:compressDebugAssets
+> Task :app:mergeDebugJniLibFolders
+> Task :app:checkDebugDuplicateClasses
+> Task :app:desugarDebugFileDependencies
+> Task :Bcore:compileDebugAidl
+> Task :Bcore:configureNdkBuildDebug[arm64-v8a]
 
 > Task :Bcore:compileDebugJavaWithJavac
 The following annotation processors are not incremental: compiler.jar (project :compiler).
@@ -52,17 +59,22 @@ Note: Some input files use unchecked or unsafe operations.
 Note: Recompile with -Xlint:unchecked for details.
 1 warning
 
-> Task :app:compressDebugAssets
+> Task :Bcore:processDebugJavaRes
 > Task :Bcore:bundleLibCompileToJarDebug
 > Task :Bcore:bundleLibRuntimeToJarDebug
-> Task :app:desugarDebugFileDependencies
-> Task :Bcore:processDebugJavaRes
-> Task :app:mergeDebugJniLibFolders
-> Task :app:checkDebugDuplicateClasses
-> Task :Bcore:configureNdkBuildDebug[arm64-v8a]
-> Task :app:compileDebugKotlin
 > Task :app:mergeExtDexDebug
-
+> Task :app:mergeLibDexDebug
+> Task :Bcore:buildNdkBuildDebug[arm64-v8a]
+> Task :Bcore:configureNdkBuildDebug[armeabi-v7a]
+> Task :Bcore:buildNdkBuildDebug[armeabi-v7a]
+> Task :Bcore:mergeDebugJniLibFolders
+> Task :Bcore:mergeDebugNativeLibs
+> Task :app:validateSigningDebug
+> Task :app:writeDebugAppMetadata
+> Task :Bcore:copyDebugJniLibsProjectOnly
+> Task :app:writeDebugSigningConfigVersions
+> Task :app:mergeDebugNativeLibs
+> Task :app:stripDebugDebugSymbols
 > Task :app:compileDebugKotlin
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/app/AppManager.kt:63:34 Parameter 'context' is never used
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/biz/cache/AppSharedPreferenceDelegate.kt:48:27 Unchecked cast: Any to Data
@@ -88,19 +100,7 @@ Note: Recompile with -Xlint:deprecation for details.
 > Task :app:mergeDebugGlobalSynthetics
 > Task :app:processDebugJavaRes
 > Task :app:mergeProjectDexDebug
-> Task :app:mergeLibDexDebug
 > Task :app:mergeDebugJavaResource
-> Task :Bcore:buildNdkBuildDebug[arm64-v8a]
-> Task :Bcore:configureNdkBuildDebug[armeabi-v7a]
-> Task :Bcore:buildNdkBuildDebug[armeabi-v7a]
-> Task :Bcore:mergeDebugJniLibFolders
-> Task :Bcore:mergeDebugNativeLibs
-> Task :app:validateSigningDebug
-> Task :app:writeDebugAppMetadata
-> Task :Bcore:copyDebugJniLibsProjectOnly
-> Task :app:writeDebugSigningConfigVersions
-> Task :app:mergeDebugNativeLibs
-> Task :app:stripDebugDebugSymbols
 > Task :app:packageDebug
 > Task :app:createDebugApkListingFileRedirect
 > Task :app:assembleDebug
@@ -113,10 +113,10 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 3m 20s
+BUILD SUCCESSFUL in 2m 55s
 70 actionable tasks: 70 executed
 gradle exit=0
 APK=upstream/app/build/outputs/apk/debug/BlackBox_4.0.0_universal-debug.apk
-输出: 9180491 B
-sha256: d9d8b277aea88630a93a607e478124433218801847bfb554ecbad66da2fe5a80
+输出: 9181604 B
+sha256: 65b619475469ff80942295d1459985aba5839c562088d177d05a95075f749015
 发布: 完成
