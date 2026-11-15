@@ -1,7 +1,8 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ Hachimi(libmain) + libmain_orig + 固定签名
-# 产物必须取 universal（arm64+v7a）；之前 find 抓到 v7a 单 ABI 包，导致容器是 32 位
+# BlackBox（Android 16 + 中文）+ Hachimi(libmain/libmain_orig) + 标记触发自动启动
+# 自动启动：仅当 /sdcard/Download/dsh-auto-launch 存在时，主进程延迟 4s 调 launchApk，
+#           方便无人值守做 hook 二分测试；默认不触发。
 on:
   push:
     paths:
@@ -47,7 +48,6 @@ jobs:
           LOG="$GITHUB_WORKSPACE/b.log"
           UP="$GITHUB_WORKSPACE/upstream"
           git clone --depth 1 https://github.com/ALEX5402/NewBlackbox.git "$UP" >> "$LOG" 2>&1
-          echo "commit: $(git -C "$UP" rev-parse --short HEAD)" >> "$LOG"
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >> "$LOG" 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.13846066" "platforms;android-36" >> "$LOG" 2>&1 || true
 
@@ -61,14 +61,10 @@ jobs:
           gb = root / "app/build.gradle"
           g = gb.read_text(encoding="utf-8")
           if "bbci_keystore" not in g:
-              sig = ("    signingConfigs {\n"
-                     "        bbci_keystore {\n"
+              sig = ("    signingConfigs {\n        bbci_keystore {\n"
                      "            storeFile file(\"%s\")\n"
-                     "            storePassword 'bbpass12'\n"
-                     "            keyAlias 'bb'\n"
-                     "            keyPassword 'bbpass12'\n"
-                     "        }\n"
-                     "    }\n" % (ws / "ci" / "bb.jks"))
+                     "            storePassword 'bbpass12'\n            keyAlias 'bb'\n"
+                     "            keyPassword 'bbpass12'\n        }\n    }\n" % (ws / "ci" / "bb.jks"))
               g = g.replace("    defaultConfig {", sig + "    defaultConfig {", 1)
               g = re.sub(r"(buildTypes\s*\{)", r"\1\n        debug { signingConfig signingConfigs.bbci_keystore }", g, count=1)
               gb.write_text(g, encoding="utf-8")
@@ -142,20 +138,28 @@ jobs:
               bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8")
               print("OK redirect + libmain_orig")
 
-          ZH = {"installed_app": "已安装应用", "empty_empty": "空空如也", "filter": "过滤",
-                "setting": "设置", "done": "完成", "cancel": "取消",
-                "install_success": "安装成功", "install_fail": "安装失败：%s",
-                "uninstall_success": "卸载成功", "other": "其他"}
-          sx = root / "app/src/main/res/values/strings.xml"
-          tx = sx.read_text(encoding="utf-8")
-          n = 0
-          for k2, v in ZH.items():
-              tx2, cnt = re.subn(r'<string name="%s">.*?</string>' % re.escape(k2),
-                                 '<string name="%s">%s</string>' % (k2, v), tx, count=1, flags=re.S)
-              if cnt:
-                  tx = tx2; n += 1
-          sx.write_text(tx, encoding="utf-8")
-          print("OK strings %d" % n)
+          app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
+          a2 = app.read_text(encoding="utf-8")
+          old = "            AppManager.doOnCreate(mContext)"
+          auto = (
+            "            if ((applicationInfo.processName ?: packageName) == packageName) {\n"
+            "            Thread {\n"
+            "                try {\n"
+            "                    Thread.sleep(4000)\n"
+            "                    val mark = java.io.File(\"/sdcard/Download/dsh-auto-launch\")\n"
+            "                    android.util.Log.i(\"BB_AUTO\", \"marker=\" + mark.exists())\n"
+            "                    if (mark.exists()) {\n"
+            "                        val r = BlackBoxCore.get().launchApk(\"com.bilibili.umamusu\", 0)\n"
+            "                        android.util.Log.i(\"BB_AUTO\", \"launch=\" + r)\n"
+            "                    }\n"
+            "                } catch (t: Throwable) {\n"
+            "                    android.util.Log.e(\"BB_AUTO\", \"auto failed\", t)\n"
+            "                }\n"
+            "            }.start()\n"
+            "            }\n" + old)
+          if old in a2 and "BB_AUTO" not in a2:
+              app.write_text(a2.replace(old, auto, 1), encoding="utf-8")
+              print("OK 标记触发自动启动")
           PY
 
       - name: 编译
@@ -165,8 +169,6 @@ jobs:
           chmod +x gradlew
           ( ./gradlew :app:assembleDebug --no-daemon --stacktrace ) >> "$LOG" 2>&1
           echo "gradle exit=$?" >> "$LOG"
-          echo "--- 产物列表 ---" >> "$LOG"
-          find app/build/outputs/apk -name "*.apk" >> "$LOG" 2>&1
 
       - name: 发布
         if: always()
@@ -175,19 +177,16 @@ jobs:
           cd "$GITHUB_WORKSPACE"
           APK=$(find upstream/app/build/outputs/apk -name "*universal*debug*.apk" | head -1)
           [ -z "$APK" ] && APK=$(find upstream/app/build/outputs/apk -name "*debug*.apk" | head -1)
-          echo "APK=$APK" >> "$LOG"
           if [ -n "$APK" ]; then
             echo "输出: $(stat -c%s "$APK") B" >> "$LOG"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
-            echo "--- ABI 检查 ---" >> "$LOG"
             unzip -l "$APK" | grep -E "lib/(arm64-v8a|armeabi-v7a)/" | awk '{print $4}' | cut -d/ -f2 | sort -u >> "$LOG" 2>&1
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-arm64-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-arm64-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
-            echo "发布: 完成" >> "$LOG"
+            cp "$APK" "bb-autoflag-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-autoflag-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
-          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
+          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; tail -n 60 "$LOG"; } > blackbox-build-status.txt
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blackbox-build-status.txt || true
