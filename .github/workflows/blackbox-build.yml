@@ -1,8 +1,9 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ Hachimi 作为宿主 APK 的 libmain.so
-# 实验 1：不预先 System.load，而是把 Hachimi 打进宿主 APK 的 lib/arm64-v8a/libmain.so，
-#          让 guest 进程自己的 System.loadLibrary("main") 从真实 lib 路径加载它（最贴近其设计）
+# BlackBox（Android 16 + 中文）+ 1b：guest 的 nativeLibraryDir 重定向
+# 思路：guest 进程创建 classloader 之前，把 ApplicationInfo.nativeLibraryDir 指向自建目录；
+#       目录里其它 .so 软链到游戏真实 lib 目录，只有 libmain.so 指向 Hachimi 的 so。
+#       这样游戏的 System.loadLibrary("main") 拿到 Hachimi，其它库仍是原版。
 on:
   push:
     paths:
@@ -35,17 +36,6 @@ jobs:
           yes | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" --licenses >> "$LOG" 2>&1 || true
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "ndk;29.0.13846066" "platforms;android-36" >> "$LOG" 2>&1 || echo "sdkmanager 部分失败（继续）" >> "$LOG"
 
-      - name: 取 Hachimi so 放进 jniLibs
-        run: |
-          LOG="$GITHUB_WORKSPACE/b.log"
-          mkdir -p /tmp/hz && cd /tmp/hz
-          gh release download 'v0.14.0。' -R "$GITHUB_REPOSITORY" -p 'zygisk-hachimi2020-*.zip' --clobber >> "$LOG" 2>&1 || echo "下载失败" >> "$LOG"
-          ls -l /tmp/hz >> "$LOG" 2>&1
-          unzip -o /tmp/hz/zygisk-hachimi2020-*.zip 'lib/arm64-v8a/libhachimi.so' -d /tmp/hz >> "$LOG" 2>&1 || echo "解压失败" >> "$LOG"
-          mkdir -p "$GITHUB_WORKSPACE/upstream/app/src/main/jniLibs/arm64-v8a"
-          cp /tmp/hz/lib/arm64-v8a/libhachimi.so "$GITHUB_WORKSPACE/upstream/app/src/main/jniLibs/arm64-v8a/libmain.so" >> "$LOG" 2>&1 || echo "拷贝失败" >> "$LOG"
-          ls -l "$GITHUB_WORKSPACE/upstream/app/src/main/jniLibs/arm64-v8a" >> "$LOG" 2>&1
-
       - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/b.log"
@@ -73,13 +63,49 @@ jobs:
 
           bt = root / "Bcore/src/main/java/top/niunaijun/blackbox/app/BActivityThread.java"
           b = bt.read_text(encoding="utf-8")
-          anchor2 = ("        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {\n"
-                     "            WebView.setDataDirectorySuffix(")
-          logline = ("        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName"
-                     " + \" nativeLibDir=\" + (applicationInfo != null ? applicationInfo.nativeLibraryDir : \"null\"));\n")
-          if anchor2 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor2, logline + anchor2, 1), encoding="utf-8")
-              print("OK BActivityThread 只加日志")
+          anchor3 = "        Context packageContext = createPackageContext(applicationInfo);"
+          redirect = (
+            "        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName"
+            " + \" nativeLibDir=\" + applicationInfo.nativeLibraryDir);\n"
+            "        if (processName != null && processName.contains(\"umamusu\")) {\n"
+            "            try {\n"
+            "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
+            "                java.io.File __hm = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
+            "                java.io.File __hmsrc = new java.io.File(\"/sdcard/Download/libmain.so\");\n"
+            "                if (__hmsrc.exists() && (!__hm.exists() || __hm.length() != __hmsrc.length())) {\n"
+            "                    java.io.InputStream __in = new java.io.FileInputStream(__hmsrc);\n"
+            "                    java.io.OutputStream __out = new java.io.FileOutputStream(__hm);\n"
+            "                    byte[] __buf = new byte[262144]; int __n;\n"
+            "                    while ((__n = __in.read(__buf)) > 0) { __out.write(__buf, 0, __n); }\n"
+            "                    __in.close(); __out.close();\n"
+            "                }\n"
+            "                java.io.File __nl = new java.io.File(__ctx.getFilesDir(), \"nativelib\");\n"
+            "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
+            "                java.io.File __srcDir = new java.io.File(applicationInfo.nativeLibraryDir);\n"
+            "                java.io.File[] __fs = __srcDir.listFiles();\n"
+            "                if (__fs != null) {\n"
+            "                    for (java.io.File __f : __fs) {\n"
+            "                        if (!__f.getName().endsWith(\".so\")) continue;\n"
+            "                        if (__f.getName().equals(\"libmain.so\")) continue;\n"
+            "                        java.io.File __t = new java.io.File(__nl, __f.getName());\n"
+            "                        if (__t.exists()) continue;\n"
+            "                        try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
+            "                    }\n"
+            "                }\n"
+            "                java.io.File __lm = new java.io.File(__nl, \"libmain.so\");\n"
+            "                if (__lm.exists()) { __lm.delete(); }\n"
+            "                android.system.Os.symlink(__hm.getAbsolutePath(), __lm.getAbsolutePath());\n"
+            "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
+            "                android.util.Log.i(\"BB_INJECT\", \"redirect nativeLibDir -> \" + __nl.getAbsolutePath() + \" libmain.size=\" + __hm.length());\n"
+            "            } catch (Throwable t) {\n"
+            "                android.util.Log.e(\"BB_INJECT\", \"redirect failed\", t);\n"
+            "            }\n"
+            "        }\n")
+          if anchor3 in b and "BB_INJECT" not in b:
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8")
+              print("OK BActivityThread nativeLibDir 重定向")
+          else:
+              print("锚点未命中或已打过")
 
           ZH = {"installed_app": "已安装应用", "empty_empty": "空空如也", "filter": "过滤",
                 "setting": "设置", "done": "完成", "cancel": "取消",
@@ -88,9 +114,9 @@ jobs:
           sx = root / "app/src/main/res/values/strings.xml"
           tx = sx.read_text(encoding="utf-8")
           n = 0
-          for k, v in ZH.items():
-              tx2, cnt = re.subn(r'<string name="%s">.*?</string>' % re.escape(k),
-                                 '<string name="%s">%s</string>' % (k, v), tx, count=1, flags=re.S)
+          for k2, v in ZH.items():
+              tx2, cnt = re.subn(r'<string name="%s">.*?</string>' % re.escape(k2),
+                                 '<string name="%s">%s</string>' % (k2, v), tx, count=1, flags=re.S)
               if cnt:
                   tx = tx2; n += 1
           sx.write_text(tx, encoding="utf-8")
@@ -115,11 +141,10 @@ jobs:
           if [ -n "$APK" ]; then
             echo "输出: $(stat -c%s "$APK") B" >> "$LOG"
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
-            unzip -l "$APK" | grep -E "libmain" >> "$LOG" 2>&1
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-hostlibmain-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-hostlibmain-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-nldir-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-nldir-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
             echo "发布: 完成" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
