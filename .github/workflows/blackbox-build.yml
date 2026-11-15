@@ -1,8 +1,8 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文 + 自动导入）+ Hachimi 注入
-# 注入方式：guest 进程启动时，把 /sdcard/Download/libhachimi.so 复制到 App 私有目录再 System.load
-#   （/sdcard 不在 linker 命名空间的 permitted_paths 里，直接 load 会 UnsatisfiedLinkError）
+# BlackBox（Android 16 + 中文）+ Hachimi 注入（不含自动启动）
+# 保留：manifest 权限 / WebView 宿主 Context / Hachimi 注入（复制到私有目录再 load）
+# 去掉：自动导入 + 自动启动 —— 打开容器就是干净列表，游戏由用户自己点
 on:
   push:
     paths:
@@ -82,34 +82,7 @@ jobs:
             "        }\n")
           if anchor2 in b and "BB_INJECT" not in b:
               bt.write_text(b.replace(anchor2, inject + anchor2, 1), encoding="utf-8")
-              print("OK BActivityThread Hachimi(私有目录复制)")
-
-          app = root / "app/src/main/java/top/niunaijun/blackboxa/app/App.kt"
-          a2 = app.read_text(encoding="utf-8")
-          old = "            AppManager.doOnCreate(mContext)"
-          auto = (
-            "            android.util.Log.i(\"BB_AUTO\", \"onCreate process=\" + applicationInfo.processName + \" pkg=\" + packageName)\n"
-            "            if ((applicationInfo.processName ?: packageName) == packageName) {\n"
-            "            Thread {\n"
-            "                try {\n"
-            "                    Thread.sleep(3000)\n"
-            "                    val core = BlackBoxCore.get()\n"
-            "                    val la = core.getInstalledApplications(0, 0)\n"
-            "                    android.util.Log.i(\"BB_AUTO\", \"guest=\" + (la?.size ?: -1))\n"
-            "                    if (la == null || la.isEmpty()) {\n"
-            "                        val r1 = core.installPackageAsUser(\"com.bilibili.umamusu\", 0)\n"
-            "                        android.util.Log.i(\"BB_AUTO\", \"install(pkg) ok=\" + r1?.success + \" msg=\" + r1?.msg)\n"
-            "                    }\n"
-            "                    Thread.sleep(2000)\n"
-            "                    android.util.Log.i(\"BB_AUTO\", \"launch=\" + core.launchApk(\"com.bilibili.umamusu\", 0))\n"
-            "                } catch (t: Throwable) {\n"
-            "                    android.util.Log.e(\"BB_AUTO\", \"auto failed\", t)\n"
-            "                }\n"
-            "            }.start()\n"
-            "            }\n" + old)
-          if old in a2 and "BB_AUTO" not in a2:
-              app.write_text(a2.replace(old, auto, 1), encoding="utf-8")
-              print("OK App.kt auto")
+              print("OK BActivityThread Hachimi")
 
           ZH = {"installed_app": "已安装应用", "empty_empty": "空空如也", "filter": "过滤",
                 "setting": "设置", "done": "完成", "cancel": "取消",
@@ -147,11 +120,11 @@ jobs:
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-load-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-load-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-clean-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-clean-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
             echo "发布: 完成" >> "$LOG"
           fi
-          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 120 行 ---"; tail -n 120 "$LOG"; } > blackbox-build-status.txt
+          { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
           git config user.name  "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add blackbox-build-status.txt || true
