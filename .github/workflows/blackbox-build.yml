@@ -1,8 +1,8 @@
 name: blackbox-build
 
-# BlackBox（Android 16 + 中文）+ Hachimi 注入（只加载到游戏进程）
-# 注入条件：进程名包含 umamusu 才 load；其他 BlackBox 辅助进程（:p0 等）跳过
-# 机制：先把 /sdcard/Download/libhachimi.so 复制到 App 私有目录，再 System.load（/sdcard 不在 linker 允许路径）
+# BlackBox（Android 16 + 中文）+ Hachimi 以 libmain.so 身份注入
+# A 方案：Hachimi 的 so 没有 SONAME，改名为 libmain.so 并 System.load 预加载，
+#         游戏后续 System.loadLibrary("main") 会命中同一个已加载库 → 不会二次 JNI_OnLoad
 on:
   push:
     paths:
@@ -68,8 +68,8 @@ jobs:
             "        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName);\n"
             "        if (processName != null && processName.contains(\"umamusu\")) {\n"
             "        try {\n"
-            "            java.io.File __dst = new java.io.File(top.niunaijun.blackbox.BlackBoxCore.getContext().getFilesDir(), \"libhachimi.so\");\n"
-            "            java.io.File __src = new java.io.File(\"/sdcard/Download/libhachimi.so\");\n"
+            "            java.io.File __dst = new java.io.File(top.niunaijun.blackbox.BlackBoxCore.getContext().getFilesDir(), \"libmain.so\");\n"
+            "            java.io.File __src = new java.io.File(\"/sdcard/Download/libmain.so\");\n"
             "            if (__src.exists() && (!__dst.exists() || __dst.length() != __src.length())) {\n"
             "                java.io.InputStream __in = new java.io.FileInputStream(__src);\n"
             "                java.io.OutputStream __out = new java.io.FileOutputStream(__dst);\n"
@@ -78,14 +78,14 @@ jobs:
             "                __in.close(); __out.close();\n"
             "            }\n"
             "            System.load(__dst.getAbsolutePath());\n"
-            "            android.util.Log.i(\"BB_INJECT\", \"hachimi loaded path=\" + __dst.getAbsolutePath() + \" size=\" + __dst.length());\n"
+            "            android.util.Log.i(\"BB_INJECT\", \"libmain(Hachimi) preloaded \" + __dst.getAbsolutePath() + \" size=\" + __dst.length());\n"
             "        } catch (Throwable t) {\n"
-            "            android.util.Log.e(\"BB_INJECT\", \"hachimi load failed\", t);\n"
+            "            android.util.Log.e(\"BB_INJECT\", \"libmain preload failed\", t);\n"
             "        }\n"
             "        }\n")
           if anchor2 in b and "BB_INJECT" not in b:
               bt.write_text(b.replace(anchor2, inject + anchor2, 1), encoding="utf-8")
-              print("OK BActivityThread Hachimi(仅 umamusu 进程)")
+              print("OK BActivityThread libmain 预加载")
 
           ZH = {"installed_app": "已安装应用", "empty_empty": "空空如也", "filter": "过滤",
                 "setting": "设置", "done": "完成", "cancel": "取消",
@@ -123,8 +123,8 @@ jobs:
             echo "sha256: $(sha256sum "$APK" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-gameonly-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-gameonly-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-libmain-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-libmain-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
             echo "发布: 完成" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID  $(date -u +%FT%TZ)"; echo "--- 末尾 100 行 ---"; tail -n 100 "$LOG"; } > blackbox-build-status.txt
