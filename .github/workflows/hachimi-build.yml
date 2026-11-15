@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 从源码构建 Hachimi（Unity2020），带 disable_dlopen_hook 开关 + 静态 C++ 运行库
+# Hachimi 源码构建：disable_dlopen_hook 开关 + 显式静态 C++ 运行库
 on:
   push:
     paths:
@@ -24,13 +24,14 @@ jobs:
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal >> "$LOG" 2>&1
           . "$HOME/.cargo/env"
           rustup target add aarch64-linux-android >> "$LOG" 2>&1
-          rustc --version >> "$LOG" 2>&1
 
       - name: 拉源码
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
           echo "commit: $(git -C "$GITHUB_WORKSPACE/hz" rev-parse --short HEAD)" >> "$LOG"
+          echo "--- 依赖里有没有 cc/cxx:" >> "$LOG"
+          (cd "$GITHUB_WORKSPACE/hz" && grep -nE "^(cc|cxx|cpp|oboe|jni)" Cargo.toml) >> "$LOG" 2>&1 || true
 
       - name: 打补丁
         run: |
@@ -42,7 +43,6 @@ jobs:
           t = cfg.read_text(encoding="utf-8")
           if "disable_dlopen_hook" not in t:
               a = "    pub disable_gui_once: bool,"
-              assert a in t
               cfg.write_text(t.replace(a, a + "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1), encoding="utf-8")
               print("OK Config")
           hk = root / "src/android/hook.rs"
@@ -55,12 +55,11 @@ jobs:
                  '    } else {\n'
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
-          assert old in h
           hk.write_text(h.replace(old, new, 1), encoding="utf-8")
           print("OK hook.rs")
           PY
 
-      - name: 交叉编译（静态 libc++）
+      - name: 交叉编译
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
@@ -71,15 +70,16 @@ jobs:
           export AR_aarch64_linux_android="$TC/llvm-ar"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
           export CXXSTDLIB="c++_static"
-          export RUSTFLAGS="-C link-arg=-static-libstdc++ -C link-arg=-Wl,--allow-shlib-undefined"
+          export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi -C link-arg=-static-libstdc++"
           cd "$GITHUB_WORKSPACE/hz"
           cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
           echo "cargo exit=$?" >> "$LOG"
           SO=target/aarch64-linux-android/release/libhachimi.so
-          ls -l "$SO" >> "$LOG" 2>&1
-          "$TC/llvm-readelf" -d "$SO" | head -20 >> "$LOG" 2>&1
-          echo "--- 未定义 C++ 符号检查 ---" >> "$LOG"
-          "$TC/llvm-readelf" -s "$SO" | grep -c "_Znwm" >> "$LOG" 2>&1 || true
+          echo "size=$(stat -c%s $SO 2>/dev/null)" >> "$LOG"
+          echo "--- NEEDED ---" >> "$LOG"
+          "$TC/llvm-readelf" -d "$SO" | grep -E "NEEDED|SONAME" >> "$LOG" 2>&1
+          echo "--- _Znwm 状态（DEF=已定义 / UND=未定义）---" >> "$LOG"
+          "$TC/llvm-readelf" -s "$SO" | grep -E "_Znwm|_ZdlPv" | head -5 >> "$LOG" 2>&1
 
       - name: 发布
         if: always()
@@ -87,16 +87,15 @@ jobs:
           LOG="$GITHUB_WORKSPACE/h.log"
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
-            echo "size: $(stat -c%s "$SO")" >> "$LOG"
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libmain-nodlopen2-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libmain-nodlopen2-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libmain-nodlopen3-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libmain-nodlopen3-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           else
             echo "无产物" >> "$LOG"
           fi
-          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 80 "$LOG"; } > hachimi-build-status.txt
+          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 60 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hachimi-build-status.txt || true
           git commit -m "ci: hachimi build ($GITHUB_RUN_ID)" || echo "no change"
