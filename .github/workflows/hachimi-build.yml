@@ -1,7 +1,6 @@
 name: hachimi-build
 
-# Hachimi 源码构建：late_load（晚加载，不接管原版入口）
-# 晚加载时 Unity 已经跑起来，JNI_OnLoad 末尾不能再调 orig_fn，否则相当于再初始化一次
+# Hachimi：late_load + 静态 C++ 运行库（不依赖 libc++_shared.so，容器里才找得到）
 on:
   push:
     paths:
@@ -34,40 +33,26 @@ jobs:
           python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
-
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "late_load" not in t:
               a = "    pub disable_gui_once: bool,"
-              t = t.replace(a, a + "\n    #[serde(default)]\n    pub late_load: bool,\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,", 1)
-              cfg.write_text(t, encoding="utf-8"); print("OK Config")
-
-          hk = root / "src/android/hook.rs"
-          h = hk.read_text(encoding="utf-8")
-          old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
-                 '    hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;')
-          new = ('    if !hachimi.config.load().disable_dlopen_hook {\n'
-                 '        info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
-                 '        hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;\n'
-                 '    } else {\n'
-                 '        info!("dlopen hook disabled by config");\n'
-                 '    }')
-          hk.write_text(h.replace(old, new, 1), encoding="utf-8"); print("OK hook.rs")
-
+              cfg.write_text(t.replace(a, a + "\n    #[serde(default)]\n    pub late_load: bool,", 1), encoding="utf-8")
+              print("OK Config")
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
-          old3 = ('    info!("JNI_OnLoad");\n'
-                  '    orig_fn(vm, reserved)\n')
-          new3 = ('    info!("JNI_OnLoad");\n'
-                  '    if Hachimi::instance().config.load().late_load {\n'
-                  '        info!("late_load: skip orig JNI_OnLoad");\n'
-                  '        return jni::sys::JNI_VERSION_1_6;\n'
-                  '    }\n'
-                  '    orig_fn(vm, reserved)\n')
-          assert old3 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old3, new3, 1), encoding="utf-8"); print("OK main.rs late_load")
+          old = ('    info!("JNI_OnLoad");\n'
+                 '    orig_fn(vm, reserved)\n')
+          new = ('    info!("JNI_OnLoad");\n'
+                 '    if Hachimi::instance().config.load().late_load {\n'
+                 '        info!("late_load: skip orig JNI_OnLoad");\n'
+                 '        return jni::sys::JNI_VERSION_1_6;\n'
+                 '    }\n'
+                 '    orig_fn(vm, reserved)\n')
+          mn.write_text(m.replace(old, new, 1), encoding="utf-8")
+          print("OK late_load")
           PY
-      - name: 交叉编译（动态 libc++_shared）
+      - name: 交叉编译（静态 libc++）
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
@@ -77,12 +62,15 @@ jobs:
           export CXX_aarch64_linux_android="$TC/aarch64-linux-android26-clang++"
           export AR_aarch64_linux_android="$TC/llvm-ar"
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
-          export CXXSTDLIB="c++_shared"
-          export RUSTFLAGS="-C link-arg=-lc++_shared"
+          export CXXSTDLIB="c++_static"
+          export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi -C link-arg=-static-libstdc++"
           cd "$GITHUB_WORKSPACE/hz"
           cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
           echo "cargo exit=$?" >> "$LOG"
-          ls -l target/aarch64-linux-android/release/libhachimi.so >> "$LOG" 2>&1
+          SO=target/aarch64-linux-android/release/libhachimi.so
+          echo "size=$(stat -c%s $SO 2>/dev/null)" >> "$LOG"
+          echo "--- NEEDED（不应出现 libc++_shared）---" >> "$LOG"
+          "$TC/llvm-readelf" -d "$SO" | grep NEEDED >> "$LOG" 2>&1
       - name: 发布
         if: always()
         run: |
@@ -92,14 +80,12 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-late-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-late-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
-          else
-            echo "无产物" >> "$LOG"
+            cp "$SO" "libhachimi-static-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-static-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hachimi-build-status.txt || true
-          git commit -m "ci: hachimi build ($GITHUB_RUN_ID)" || echo "no change"
+          git commit -m "ci: hachimi ($GITHUB_RUN_ID)" || echo "no change"
           git pull --rebase --autostash >> /dev/null 2>&1 || true
           git push || { sleep 5; git pull --rebase --autostash >> /dev/null 2>&1 || true; git push; } || true
