@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 轮询 v3：maps 只做"探测"，句柄用 dlopen(NULL) 全局句柄；找到 il2cpp 后延时强制触发 cri 阶段
+# 轮询 v4：触发前先 il2cpp_thread_attach（未 attach 的线程调 il2cpp 接口会卡死内部锁）
 on:
   push:
     paths:
@@ -71,19 +71,27 @@ jobs:
                   '                    let hachimi = Hachimi::instance();\n'
                   '                    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();\n'
                   '                    let mut il2: Option<String> = None;\n'
-                  '                    let mut cri: Option<String> = None;\n'
                   '                    for line in maps.lines() {\n'
                   '                        if let Some(idx) = line.find(\'/\') {\n'
                   '                            let p = line[idx..].trim_end_matches(" (deleted)");\n'
-                  '                            if il2.is_none() && p.ends_with("libil2cpp.so") { il2 = Some(p.to_string()); }\n'
-                  '                            if cri.is_none() && p.ends_with("libcri_ware_unity.so") { cri = Some(p.to_string()); }\n'
+                  '                            if p.ends_with("libil2cpp.so") { il2 = Some(p.to_string()); break; }\n'
                   '                        }\n'
                   '                    }\n'
                   '                    if !il2_seen {\n'
                   '                        if let Some(p) = &il2 {\n'
                   '                            info!("poll: maps hit il2cpp @ {}", p);\n'
                   '                            let g = libc::dlopen(std::ptr::null(), libc::RTLD_NOW);\n'
-                  '                            info!("poll: global handle {:#x}", g as usize);\n'
+                  '                            let dgsym = libc::dlsym(g, c"il2cpp_domain_get".as_ptr());\n'
+                  '                            let tasym = libc::dlsym(g, c"il2cpp_thread_attach".as_ptr());\n'
+                  '                            info!("poll: handle {:#x} domain_get {:p} attach {:p}", g as usize, dgsym, tasym);\n'
+                  '                            if !dgsym.is_null() && !tasym.is_null() {\n'
+                  '                                let domain_get: extern "C" fn() -> *mut core::ffi::c_void = std::mem::transmute(dgsym);\n'
+                  '                                let thread_attach: extern "C" fn(*mut core::ffi::c_void) -> *mut core::ffi::c_void = std::mem::transmute(tasym);\n'
+                  '                                let dom = domain_get();\n'
+                  '                                info!("poll: domain {:#x}", dom as usize);\n'
+                  '                                let th = thread_attach(dom);\n'
+                  '                                info!("poll: attached {:#x}", th as usize);\n'
+                  '                            }\n'
                   '                            hachimi.on_dlopen("libil2cpp.so", g as usize);\n'
                   '                            il2_seen = true;\n'
                   '                            wait_after_il2 = 6;\n'
@@ -105,7 +113,7 @@ jobs:
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v3")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v4 (attach)")
           PY
       - name: 交叉编译（静态 libc++）
         run: |
@@ -132,8 +140,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-poll3-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-poll3-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libhachimi-attach-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-attach-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
