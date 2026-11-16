@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 只允许主进程 com.bilibili.umamusu 加载 Hachimi（pushservice 等进程会导致 region Unknown → 默认配置 → dlopen hook 递归）
+# 晚加载 v7：加载 Hachimi 前先 System.loadLibrary("tprt")/"tersafe2"，满足 libil2cpp 的 DT_NEEDED
 on:
   push:
     paths:
@@ -128,6 +128,10 @@ jobs:
             "                final java.io.File __hFinal = __h;\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
+            "                        try { System.loadLibrary(\"tprt\"); android.util.Log.i(\"BB_INJECT\", \"tprt preloaded\"); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tprt preload failed\", __e); }\n"
+            "                        try { System.loadLibrary(\"tersafe2\"); android.util.Log.i(\"BB_INJECT\", \"tersafe2 preloaded\"); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tersafe2 preload failed\", __e); }\n"
             "                        Thread.sleep(8000);\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"late loading (main only)\");\n"
             "                        System.load(__hFinal.getAbsolutePath());\n"
@@ -137,7 +141,7 @@ jobs:
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK main-process-only")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK tprt preload")
           PY
       - name: 编译
         run: |
@@ -155,8 +159,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-mainonly-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-mainonly-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-tprt-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-tprt-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
