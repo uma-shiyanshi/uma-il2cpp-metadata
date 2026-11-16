@@ -1,4 +1,4 @@
-run: 43770570272 2026-11-15T22:43:21Z
+run: 43796006442 2026-11-16T03:08:38Z
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/app/AppManager.kt:63:34 Parameter 'context' is never used
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/biz/cache/AppSharedPreferenceDelegate.kt:48:27 Unchecked cast: Any to Data
 w: file:///home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/upstream/app/src/main/java/top/niunaijun/blackboxa/data/AppsRepository.kt:261:25 Condition 'applicationInfo == null' is always 'false'
@@ -36,6 +36,6 @@ You can use '--warning-mode all' to show the individual deprecation warnings and
 
 For more on this, please refer to https://docs.gradle.org/8.14.5/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
 
-BUILD SUCCESSFUL in 2m 23s
+BUILD SUCCESSFUL in 2m 31s
 70 actionable tasks: 70 executed
 gradle exit=0
