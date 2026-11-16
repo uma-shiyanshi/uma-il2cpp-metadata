@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# Hachimi：轮询改为从 /proc/self/maps 取真实路径 + RTLD_NOLOAD（按名 dlopen 在容器里解析不到）
+# 轮询 v3：maps 只做"探测"，句柄用 dlopen(NULL) 全局句柄；找到 il2cpp 后延时强制触发 cri 阶段
 on:
   push:
     paths:
@@ -64,6 +64,8 @@ jobs:
                   '        info!("late_load: skip orig JNI_OnLoad");\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
                   '            std::thread::spawn(|| unsafe {\n'
+                  '                let mut il2_seen = false;\n'
+                  '                let mut wait_after_il2 = 0;\n'
                   '                for _ in 0..360 {\n'
                   '                    std::thread::sleep(std::time::Duration::from_millis(500));\n'
                   '                    let hachimi = Hachimi::instance();\n'
@@ -77,20 +79,20 @@ jobs:
                   '                            if cri.is_none() && p.ends_with("libcri_ware_unity.so") { cri = Some(p.to_string()); }\n'
                   '                        }\n'
                   '                    }\n'
-                  '                    if let Some(p) = il2 {\n'
-                  '                        let cs = std::ffi::CString::new(p.clone()).unwrap();\n'
-                  '                        let h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);\n'
-                  '                        if !h.is_null() {\n'
-                  '                            info!("poll: il2cpp @ {}", p);\n'
-                  '                            hachimi.on_dlopen("libil2cpp.so", h as usize);\n'
+                  '                    if !il2_seen {\n'
+                  '                        if let Some(p) = &il2 {\n'
+                  '                            info!("poll: maps hit il2cpp @ {}", p);\n'
+                  '                            let g = libc::dlopen(std::ptr::null(), libc::RTLD_NOW);\n'
+                  '                            info!("poll: global handle {:#x}", g as usize);\n'
+                  '                            hachimi.on_dlopen("libil2cpp.so", g as usize);\n'
+                  '                            il2_seen = true;\n'
+                  '                            wait_after_il2 = 6;\n'
                   '                        }\n'
-                  '                    }\n'
-                  '                    if let Some(p) = cri {\n'
-                  '                        let cs = std::ffi::CString::new(p.clone()).unwrap();\n'
-                  '                        let h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);\n'
-                  '                        if !h.is_null() {\n'
-                  '                            info!("poll: criware @ {}", p);\n'
-                  '                            if hachimi.on_dlopen("libcri_ware_unity.so", h as usize) {\n'
+                  '                    } else if wait_after_il2 > 0 {\n'
+                  '                        wait_after_il2 -= 1;\n'
+                  '                        if wait_after_il2 == 0 {\n'
+                  '                            info!("poll: forcing cri stage");\n'
+                  '                            if hachimi.on_dlopen("libcri_ware_unity.so", 1) {\n'
                   '                                info!("poll: hooking triggered");\n'
                   '                                break;\n'
                   '                            }\n'
@@ -103,7 +105,7 @@ jobs:
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll(maps)")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v3")
           PY
       - name: 交叉编译（静态 libc++）
         run: |
@@ -130,8 +132,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-maps-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-maps-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libhachimi-poll3-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-poll3-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
