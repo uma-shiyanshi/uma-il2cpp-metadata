@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v6：8 秒时加载 Hachimi，不做任何手动触发（让游戏自己的 dlopen 被 hook 捕获）
+# 只允许主进程 com.bilibili.umamusu 加载 Hachimi（pushservice 等进程会导致 region Unknown → 默认配置 → dlopen hook 递归）
 on:
   push:
     paths:
@@ -76,7 +76,8 @@ jobs:
           b = bt.read_text(encoding="utf-8")
           anchor3 = "        Context packageContext = createPackageContext(applicationInfo);"
           redirect = (
-            "        if (processName != null && processName.contains(\"umamusu\")) {\n"
+            "        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName);\n"
+            "        if (\"com.bilibili.umamusu\".equals(processName)) {\n"
             "            try {\n"
             "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
             "                java.io.File __srcDir = new java.io.File(applicationInfo.nativeLibraryDir);\n"
@@ -128,7 +129,7 @@ jobs:
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
             "                        Thread.sleep(8000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late loading (8s)\");\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"late loading (main only)\");\n"
             "                        System.load(__hFinal.getAbsolutePath());\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late)\");\n"
             "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"late load failed\", __t); }\n"
@@ -136,7 +137,7 @@ jobs:
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK late-load v6")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK main-process-only")
           PY
       - name: 编译
         run: |
@@ -154,8 +155,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-early8-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-early8-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-mainonly-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-mainonly-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
