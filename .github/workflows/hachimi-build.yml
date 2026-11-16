@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 轮询 v4：触发前先 il2cpp_thread_attach（未 attach 的线程调 il2cpp 接口会卡死内部锁）
+# 轮询 v5：用 maps 里的完整路径 dlopen（先 NOLOAD，失败再普通 dlopen），拿到正确命名空间下的 il2cpp 句柄
 on:
   push:
     paths:
@@ -79,22 +79,34 @@ jobs:
                   '                    }\n'
                   '                    if !il2_seen {\n'
                   '                        if let Some(p) = &il2 {\n'
-                  '                            info!("poll: maps hit il2cpp @ {}", p);\n'
-                  '                            let g = libc::dlopen(std::ptr::null(), libc::RTLD_NOW);\n'
-                  '                            let dgsym = libc::dlsym(g, c"il2cpp_domain_get".as_ptr());\n'
-                  '                            let tasym = libc::dlsym(g, c"il2cpp_thread_attach".as_ptr());\n'
-                  '                            info!("poll: handle {:#x} domain_get {:p} attach {:p}", g as usize, dgsym, tasym);\n'
-                  '                            if !dgsym.is_null() && !tasym.is_null() {\n'
-                  '                                let domain_get: extern "C" fn() -> *mut core::ffi::c_void = std::mem::transmute(dgsym);\n'
-                  '                                let thread_attach: extern "C" fn(*mut core::ffi::c_void) -> *mut core::ffi::c_void = std::mem::transmute(tasym);\n'
-                  '                                let dom = domain_get();\n'
-                  '                                info!("poll: domain {:#x}", dom as usize);\n'
-                  '                                let th = thread_attach(dom);\n'
-                  '                                info!("poll: attached {:#x}", th as usize);\n'
+                  '                            info!("poll: maps hit @ {}", p);\n'
+                  '                            let cs = std::ffi::CString::new(p.clone()).unwrap();\n'
+                  '                            let mut h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);\n'
+                  '                            info!("poll: NOLOAD handle {:#x}", h as usize);\n'
+                  '                            if h.is_null() {\n'
+                  '                                h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY);\n'
+                  '                                info!("poll: full dlopen handle {:#x}", h as usize);\n'
                   '                            }\n'
-                  '                            hachimi.on_dlopen("libil2cpp.so", g as usize);\n'
-                  '                            il2_seen = true;\n'
-                  '                            wait_after_il2 = 6;\n'
+                  '                            if h.is_null() {\n'
+                  '                                let e = libc::dlerror();\n'
+                  '                                if !e.is_null() {\n'
+                  '                                    info!("poll: dlerror {}", std::ffi::CStr::from_ptr(e).to_string_lossy());\n'
+                  '                                }\n'
+                  '                            } else {\n'
+                  '                                let dg = libc::dlsym(h, c"il2cpp_domain_get".as_ptr());\n'
+                  '                                let ta = libc::dlsym(h, c"il2cpp_thread_attach".as_ptr());\n'
+                  '                                info!("poll: domain_get {:p} attach {:p}", dg, ta);\n'
+                  '                                if !dg.is_null() && !ta.is_null() {\n'
+                  '                                    let domain_get: extern "C" fn() -> *mut core::ffi::c_void = std::mem::transmute(dg);\n'
+                  '                                    let thread_attach: extern "C" fn(*mut core::ffi::c_void) -> *mut core::ffi::c_void = std::mem::transmute(ta);\n'
+                  '                                    let dom = domain_get();\n'
+                  '                                    let th = thread_attach(dom);\n'
+                  '                                    info!("poll: domain {:#x} attached {:#x}", dom as usize, th as usize);\n'
+                  '                                }\n'
+                  '                                hachimi.on_dlopen("libil2cpp.so", h as usize);\n'
+                  '                                il2_seen = true;\n'
+                  '                                wait_after_il2 = 6;\n'
+                  '                            }\n'
                   '                        }\n'
                   '                    } else if wait_after_il2 > 0 {\n'
                   '                        wait_after_il2 -= 1;\n'
@@ -113,7 +125,7 @@ jobs:
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v4 (attach)")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v5")
           PY
       - name: 交叉编译（静态 libc++）
         run: |
@@ -140,8 +152,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-attach-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-attach-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libhachimi-path-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-path-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
