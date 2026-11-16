@@ -1,4 +1,4 @@
-run: 43874801881 2026-11-16T13:22:05Z
+run: 43876162067 2026-11-16T13:31:08Z
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:102:125
@@ -45,7 +45,7 @@ help: first cast to a pointer `as *const ()`
     |                                                                                                     ++++++++++++
 
 warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 24s
+    Finished `release` profile [optimized] target(s) in 1m 47s
 cargo exit=0
--rwxr-xr-x 2 runner runner 14841160 Nov 16 13:22 target/aarch64-linux-android/release/libhachimi.so
-sha256: 0f81f5055cd377e4f97b0812a8ffceecbd4f08249dd61159284fffb372a1e0f8
+-rwxr-xr-x 2 runner runner 14839936 Nov 16 13:31 target/aarch64-linux-android/release/libhachimi.so
+sha256: 951f76d31c4a587df2ae26fc3969ddab5594d0508bc05b44734e2df60a920a7a
