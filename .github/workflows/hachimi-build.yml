@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# meta-only：无法走 metadata 的 hook 直接跳过，绝不回退 inline（ACE 会比对代码字节）
+# meta-only + 拦截 android_os_Process_sendSignal 的自杀信号
 on:
   push:
     paths:
@@ -37,6 +37,7 @@ jobs:
 
           python3 - hz <<'PY'
           import pathlib
+          # 1) 去掉 inline 回退
           p = pathlib.Path("hz/src/il2cpp/hook/mod.rs")
           s = p.read_text(encoding="utf-8")
           old = ('                if !done {\n'
@@ -48,9 +49,46 @@ jobs:
                  '                }\n')
           if old in s:
               p.write_text(s.replace(old, new, 1), encoding="utf-8")
-              print("meta-only patched")
-          else:
-              print("anchor missing")
+              print("meta-only ok")
+
+          # 2) 追加 sendSignal hook
+          m = pathlib.Path("hz/src/android/main.rs")
+          t = m.read_text(encoding="utf-8")
+          tail = '''
+
+          static ORIG_SEND_SIGNAL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+          extern "C" fn send_signal_hook(_env: *mut std::ffi::c_void, _clazz: *mut std::ffi::c_void, pid: i32, sig: i32) -> i32 {
+              if sig == 9 {
+                  let me = std::process::id() as i32;
+                  if pid == me || pid == -me || pid == 0 { return 0; }
+              }
+              let p = ORIG_SEND_SIGNAL.load(std::sync::atomic::Ordering::Relaxed);
+              if p == 0 { return -1; }
+              let f: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, i32, i32) -> i32 = unsafe { std::mem::transmute(p) };
+              f(_env, _clazz, pid, sig)
+          }
+
+          pub fn install_send_signal_hook() {
+              unsafe {
+                  let addr = crate::symbols_impl::dlsym(1 as *mut std::ffi::c_void, "android_os_Process_sendSignal");
+                  if addr == 0 { log::warn!("sendSignal symbol not found"); return; }
+                  let h = Hachimi::instance();
+                  match h.interceptor.hook(addr, send_signal_hook as usize) {
+                      Ok(_) => {
+                          let tr = h.interceptor.get_trampoline_addr(addr);
+                          ORIG_SEND_SIGNAL.store(tr, std::sync::atomic::Ordering::Relaxed);
+                          log::info!("sendSignal hook ok addr={:#x}", addr);
+                      }
+                      Err(e) => log::warn!("sendSignal hook failed: {}", e),
+                  }
+              }
+          }
+          '''
+          if "install_send_signal_hook" not in t:
+              t = t.replace('    info!("JNI_OnLoad");', '    info!("JNI_OnLoad");\n    install_send_signal_hook();', 1)
+              m.write_text(t + tail, encoding="utf-8")
+              print("sendSignal hook added")
           PY
 
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
@@ -66,16 +104,16 @@ jobs:
           cargo build --release --target aarch64-linux-android
           SO=target/aarch64-linux-android/release/libhachimi.so
           ls -l "$SO"
-          cp "$SO" ../libhachimi-meta.so
-          sha256sum ../libhachimi-meta.so
+          cp "$SO" ../libhachimi-sig.so
+          sha256sum ../libhachimi-sig.so
 
       - name: publish
         if: always()
         run: |
           cd "$GITHUB_WORKSPACE"
-          if [ -f libhachimi-meta.so ]; then
-            NAME="libhachimi-metaonly-$(date -u +%m%d-%H%M).so"
-            cp libhachimi-meta.so "$NAME"
+          if [ -f libhachimi-sig.so ]; then
+            NAME="libhachimi-sig-$(date -u +%m%d-%H%M).so"
+            cp libhachimi-sig.so "$NAME"
             gh release view builds -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
             gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
           fi
