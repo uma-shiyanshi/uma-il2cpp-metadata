@@ -127,10 +127,11 @@ root = pathlib.Path(sys.argv[1])
 sy = root / "src/il2cpp/symbols.rs"
 s = sy.read_text(encoding="utf-8")
 if "META_MAP" not in s:
+    # 只插入静态变量（全限定类型，避免与已有 use 冲突）
     s = s.replace("use crate::core::Hachimi;",
-        "use crate::core::Hachimi;\nuse std::collections::HashMap;\nuse std::sync::Mutex;\n"
-        "pub static META_MAP: once_cell::sync::Lazy<Mutex<HashMap<usize, usize>>> = "
-        "once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));\n", 1)
+        "use crate::core::Hachimi;\n"
+        "pub static META_MAP: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<usize, usize>>> = "
+        "once_cell::sync::Lazy::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));\n", 1)
     s = s.replace("    if let Ok(method) = res {\n        unsafe { (*method).methodPointer }\n    }",
         "    if let Ok(method) = res {\n        unsafe {\n"
         "            let p = (*method).methodPointer as usize;\n"
