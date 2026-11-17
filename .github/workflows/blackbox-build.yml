@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v10：loadLibrary0 传绝对路径（带 / 会按路径加载，命名空间仍由游戏 ClassLoader 决定）
+# 晚加载 v11：反射 loadLibrary0(ClassLoader,String,boolean) 且 isAbsolute=true（按路径 + 游戏命名空间）
 on:
   push:
     paths:
@@ -138,12 +138,29 @@ jobs:
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
             "                        Thread.sleep(8000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late load abs=\" + __hPath + \" CL=\" + __gameCl);\n"
-            "                        java.lang.reflect.Method __m = java.lang.Runtime.class.getDeclaredMethod(\"loadLibrary0\", ClassLoader.class, String.class);\n"
-            "                        __m.setAccessible(true);\n"
-            "                        __m.invoke(java.lang.Runtime.getRuntime(), __gameCl, __hPath);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded via game CL(abs)\");\n"
-            "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"game CL abs load failed\", __t); }\n"
+            "                        java.lang.Runtime __rt = java.lang.Runtime.getRuntime();\n"
+            "                        boolean __ok = false;\n"
+            "                        try {\n"
+            "                            java.lang.reflect.Method __m3 = java.lang.Runtime.class.getDeclaredMethod(\"loadLibrary0\", ClassLoader.class, String.class, boolean.class);\n"
+            "                            __m3.setAccessible(true);\n"
+            "                            __m3.invoke(__rt, __gameCl, __hPath, Boolean.TRUE);\n"
+            "                            __ok = true;\n"
+            "                            android.util.Log.i(\"BB_INJECT\", \"loaded via loadLibrary0(CL,path,true)\");\n"
+            "                        } catch (Throwable __e1) { android.util.Log.e(\"BB_INJECT\", \"abs-load 3arg failed\", __e1); }\n"
+            "                        if (!__ok) {\n"
+            "                            try {\n"
+            "                                java.lang.reflect.Method __m4 = java.lang.Runtime.class.getDeclaredMethod(\"load0\", String.class, boolean.class);\n"
+            "                                __m4.setAccessible(true);\n"
+            "                                __m4.invoke(__rt, __hPath, Boolean.TRUE);\n"
+            "                                __ok = true;\n"
+            "                                android.util.Log.i(\"BB_INJECT\", \"loaded via load0(path,true)\");\n"
+            "                            } catch (Throwable __e2) { android.util.Log.e(\"BB_INJECT\", \"load0 failed\", __e2); }\n"
+            "                        }\n"
+            "                        if (!__ok) {\n"
+            "                            System.load(__hPath);\n"
+            "                            android.util.Log.i(\"BB_INJECT\", \"loaded via System.load (host ns)\");\n"
+            "                        }\n"
+            "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"late load failed\", __t); }\n"
             "                } }).start();\n"
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"load block failed\", t); }\n"
             "        }\n")
@@ -151,7 +168,7 @@ jobs:
           if anchor3 in b and "BB_INJECT" not in b:
               b = b.replace(anchor3, setup + anchor3, 1)
               b = b.replace(anchor3, anchor3 + loadblock, 1)
-              bt.write_text(b, encoding="utf-8"); print("OK abs path load")
+              bt.write_text(b, encoding="utf-8"); print("OK abs-load v11")
           PY
       - name: 编译
         run: |
@@ -169,8 +186,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-abs-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-abs-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-abs2-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-abs2-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
