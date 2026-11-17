@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 轮询 v5：用 maps 里的完整路径 dlopen（先 NOLOAD，失败再普通 dlopen），拿到正确命名空间下的 il2cpp 句柄
+# 彻底绕开 dlopen：symbols_impl::dlsym 改为自己解析 libil2cpp 的 ELF（maps 基址 + dynsym）
 on:
   push:
     paths:
@@ -34,6 +34,7 @@ jobs:
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
 
+          # 1) 配置项 + hook 开关
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "poll_il2cpp" not in t:
@@ -55,6 +56,96 @@ jobs:
                  '    }')
           hk.write_text(h.replace(old, new, 1), encoding="utf-8"); print("OK hook.rs")
 
+          # 2) 自研符号解析
+          sym = root / "src/android/symbols_impl.rs"
+          sym.write_text(r'''use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
+
+use std::fs;
+
+static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
+
+fn read_u16(b: &[u8], o: usize) -> u16 { u16::from_le_bytes([b[o], b[o+1]]) }
+fn read_u32(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o+1], b[o+2], b[o+3]]) }
+fn read_u64(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o],b[o+1],b[o+2],b[o+3],b[o+4],b[o+5],b[o+6],b[o+7]]) }
+
+fn il2cpp_base_and_path() -> Option<(usize, String)> {
+    let maps = fs::read_to_string("/proc/self/maps").ok()?;
+    let mut base = usize::MAX;
+    let mut path = String::new();
+    for line in maps.lines() {
+        if let Some(i) = line.find('/') {
+            let p = line[i..].trim_end_matches(" (deleted)").trim();
+            if p.ends_with("libil2cpp.so") {
+                if let Some(rng) = line.split_whitespace().next() {
+                    if let Some(s) = rng.split('-').next() {
+                        if let Ok(a) = usize::from_str_radix(s, 16) {
+                            if a < base { base = a; path = p.to_string(); }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if base == usize::MAX || path.is_empty() { None } else { Some((base, path)) }
+}
+
+fn build_cache() -> HashMap<String, usize> {
+    let mut map = HashMap::new();
+    let Some((base, path)) = il2cpp_base_and_path() else { return map };
+    let Ok(data) = fs::read(&path) else { return map };
+    if data.len() < 64 || &data[0..4] != b"\x7fELF" || data[4] != 2 { return map; }
+    let shoff = read_u64(&data, 0x28) as usize;
+    let shentsize = read_u16(&data, 0x3a) as usize;
+    let shnum = read_u16(&data, 0x3c) as usize;
+    if shoff == 0 || shnum == 0 { return map; }
+    let mut dynsym = None;
+    let mut dynstr = None;
+    let mut sections = Vec::new();
+    for i in 0..shnum {
+        let o = shoff + i * shentsize;
+        if o + 64 > data.len() { break; }
+        let stype = read_u32(&data, o + 4);
+        let off = read_u64(&data, o + 0x18) as usize;
+        let size = read_u64(&data, o + 0x20) as usize;
+        let link = read_u32(&data, o + 0x28) as usize;
+        sections.push((stype, off, size, link));
+    }
+    for &(stype, off, size, _link) in &sections {
+        if stype == 11 { dynsym = Some((off, size)); }
+    }
+    if let Some((_, _, _, link)) = sections.iter().find(|s| s.0 == 11) {
+        if let Some(&(_, soff, ssize, _)) = sections.get(*link) { dynstr = Some((soff, ssize)); }
+    }
+    let (Some((symoff, symsize)), Some((stroff, strsize))) = (dynsym, dynstr) else { return map };
+    let count = symsize / 24;
+    for i in 0..count {
+        let o = symoff + i * 24;
+        if o + 24 > data.len() { break; }
+        let name_off = read_u32(&data, o) as usize;
+        let value = read_u64(&data, o + 8) as usize;
+        if value == 0 || name_off >= strsize { continue; }
+        let s = stroff + name_off;
+        if s >= data.len() { continue; }
+        let mut e = s;
+        while e < data.len() && data[e] != 0 { e += 1; }
+        if let Ok(name) = std::str::from_utf8(&data[s..e]) {
+            if !name.is_empty() { map.insert(name.to_string(), base + value); }
+        }
+    }
+    map
+}
+
+pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
+    let cache = CACHE.get_or_init(build_cache);
+    if let Some(&addr) = cache.get(name) { return addr; }
+    if handle.is_null() || handle as usize == 1 { return 0; }
+    let Ok(c) = std::ffi::CString::new(name) else { return 0 };
+    libc::dlsym(handle, c.as_ptr()) as usize
+}
+''', encoding="utf-8")
+          print("OK symbols_impl (ELF 解析)")
+
+          # 3) 轮询：直接给假句柄（非 null 且不等于 1 会被当作真句柄）
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
           old2 = ('    info!("JNI_OnLoad");\n'
@@ -63,59 +154,22 @@ jobs:
                   '    if Hachimi::instance().config.load().late_load {\n'
                   '        info!("late_load: skip orig JNI_OnLoad");\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
-                  '            std::thread::spawn(|| unsafe {\n'
-                  '                let mut il2_seen = false;\n'
-                  '                let mut wait_after_il2 = 0;\n'
+                  '            std::thread::spawn(|| {\n'
+                  '                let mut done = false;\n'
                   '                for _ in 0..360 {\n'
                   '                    std::thread::sleep(std::time::Duration::from_millis(500));\n'
                   '                    let hachimi = Hachimi::instance();\n'
                   '                    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();\n'
-                  '                    let mut il2: Option<String> = None;\n'
-                  '                    for line in maps.lines() {\n'
-                  '                        if let Some(idx) = line.find(\'/\') {\n'
-                  '                            let p = line[idx..].trim_end_matches(" (deleted)");\n'
-                  '                            if p.ends_with("libil2cpp.so") { il2 = Some(p.to_string()); break; }\n'
-                  '                        }\n'
-                  '                    }\n'
-                  '                    if !il2_seen {\n'
-                  '                        if let Some(p) = &il2 {\n'
-                  '                            info!("poll: maps hit @ {}", p);\n'
-                  '                            let cs = std::ffi::CString::new(p.clone()).unwrap();\n'
-                  '                            let mut h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY | libc::RTLD_NOLOAD);\n'
-                  '                            info!("poll: NOLOAD handle {:#x}", h as usize);\n'
-                  '                            if h.is_null() {\n'
-                  '                                h = libc::dlopen(cs.as_ptr(), libc::RTLD_LAZY);\n'
-                  '                                info!("poll: full dlopen handle {:#x}", h as usize);\n'
-                  '                            }\n'
-                  '                            if h.is_null() {\n'
-                  '                                let e = libc::dlerror();\n'
-                  '                                if !e.is_null() {\n'
-                  '                                    info!("poll: dlerror {}", std::ffi::CStr::from_ptr(e).to_string_lossy());\n'
-                  '                                }\n'
-                  '                            } else {\n'
-                  '                                let dg = libc::dlsym(h, c"il2cpp_domain_get".as_ptr());\n'
-                  '                                let ta = libc::dlsym(h, c"il2cpp_thread_attach".as_ptr());\n'
-                  '                                info!("poll: domain_get {:p} attach {:p}", dg, ta);\n'
-                  '                                if !dg.is_null() && !ta.is_null() {\n'
-                  '                                    let domain_get: extern "C" fn() -> *mut core::ffi::c_void = std::mem::transmute(dg);\n'
-                  '                                    let thread_attach: extern "C" fn(*mut core::ffi::c_void) -> *mut core::ffi::c_void = std::mem::transmute(ta);\n'
-                  '                                    let dom = domain_get();\n'
-                  '                                    let th = thread_attach(dom);\n'
-                  '                                    info!("poll: domain {:#x} attached {:#x}", dom as usize, th as usize);\n'
-                  '                                }\n'
-                  '                                hachimi.on_dlopen("libil2cpp.so", h as usize);\n'
-                  '                                il2_seen = true;\n'
-                  '                                wait_after_il2 = 6;\n'
-                  '                            }\n'
-                  '                        }\n'
-                  '                    } else if wait_after_il2 > 0 {\n'
-                  '                        wait_after_il2 -= 1;\n'
-                  '                        if wait_after_il2 == 0 {\n'
-                  '                            info!("poll: forcing cri stage");\n'
-                  '                            if hachimi.on_dlopen("libcri_ware_unity.so", 1) {\n'
-                  '                                info!("poll: hooking triggered");\n'
-                  '                                break;\n'
-                  '                            }\n'
+                  '                    let hit = maps.lines().any(|l| l.contains("libil2cpp.so"));\n'
+                  '                    if hit && !done {\n'
+                  '                        info!("poll: il2cpp present, using ELF resolver");\n'
+                  '                        hachimi.on_dlopen("libil2cpp.so", 1);\n'
+                  '                        done = true;\n'
+                  '                        for _ in 0..6 { std::thread::sleep(std::time::Duration::from_millis(500)); }\n'
+                  '                        info!("poll: forcing cri stage");\n'
+                  '                        if hachimi.on_dlopen("libcri_ware_unity.so", 1) {\n'
+                  '                            info!("poll: hooking triggered");\n'
+                  '                            break;\n'
                   '                        }\n'
                   '                    }\n'
                   '                }\n'
@@ -125,7 +179,7 @@ jobs:
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll v5")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll (ELF resolver)")
           PY
       - name: 交叉编译（静态 libc++）
         run: |
@@ -152,8 +206,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-path-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-path-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libhachimi-elf-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-elf-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
