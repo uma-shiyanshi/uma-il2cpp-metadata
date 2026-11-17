@@ -1,41 +1,61 @@
-run: 44011309881 2026-11-17T03:37:52Z
-    |
-192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
-    |     ---------------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
-102 |         unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as *const () as usize)) }
-    |                                                                                                                             ++++++++++++
+run: 44098178336
+   Compiling hex v0.4.3
+   Compiling bytes v1.5.0
+   Compiling linux-raw-sys v0.4.13
+   Compiling subtle v2.5.0
+   Compiling zeroize v1.7.0
+   Compiling glob v0.3.2
+   Compiling color_quant v1.1.0
+   Compiling rust-i18n-macro v3.1.4
+   Compiling image v0.24.9
+   Compiling combine v4.6.6
+   Compiling procfs-core v0.16.0
+   Compiling enum-map v2.7.3
+   Compiling hachimi v0.14.0 (/home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/hz)
+   Compiling url v2.5.0
+   Compiling webpki-roots v0.26.1
+   Compiling env_logger v0.10.2
+   Compiling num_cpus v1.16.0
+   Compiling cesu8 v1.1.0
+   Compiling ascii v1.1.0
+   Compiling glow v0.13.1
+   Compiling jni-sys v0.3.0
+   Compiling unicode-width v0.1.11
+   Compiling base64 v0.22.1
+   Compiling arrayref v0.3.7
+   Compiling constant_time_eq v0.3.0
+   Compiling chunked_transfer v1.5.0
+   Compiling arrayvec v0.7.4
+   Compiling smawk v0.3.2
+   Compiling httpdate v1.0.3
+   Compiling unicode-linebreak v0.1.5
+   Compiling android_log-sys v0.3.1
+   Compiling android_logger v0.13.3
+   Compiling textwrap v0.16.1
+   Compiling egui_glow v0.27.2
+   Compiling tiny_http v0.12.0
+   Compiling ureq v2.10.1
+   Compiling jni v0.21.1
+   Compiling threadpool v1.8.1
+   Compiling dobby-rs v0.1.0
+   Compiling egui_extras v0.27.2
+   Compiling zip v0.6.6
+   Compiling cstr v0.2.11
+   Compiling sqlparser v0.43.1
+   Compiling size v0.4.1
+   Compiling widestring v1.1.0
+   Compiling fnv v1.0.7
+   Compiling atomic_float v0.1.0
+error[E0252]: the name `Mutex` is defined multiple times
+  --> src/il2cpp/symbols.rs:14:5
+   |
+ 7 | use std::sync::Mutex;
+   |     ---------------- previous import of the type `Mutex` here
+...
+14 | use std::sync::Mutex;
+   |     ^^^^^^^^^^^^^^^^ `Mutex` reimported here
+   |
+   = note: `Mutex` must be defined only once in the type namespace of this module
 
-warning: hiding a lifetime that's elided elsewhere is confusing
-   --> src/android/gui_impl/input_hook.rs:205:22
-    |
-205 | fn get_view(mut env: JNIEnv) -> JObject<'_> {
-    |                      ^^^^^^             ^^ the same lifetime is elided here
-    |                      |
-    |                      the lifetime is hidden here
-    |
-    = help: the same lifetime is referred to in inconsistent ways, making the signature confusing
-    = note: `#[warn(mismatched_lifetime_syntaxes)]` on by default
-help: consistently use `'_`
-    |
-205 | fn get_view(mut env: JNIEnv<'_>) -> JObject<'_> {
-    |                            ++++
-
-warning: direct cast of function item into an integer
-   --> src/android/gui_impl/input_hook.rs:251:101
-    |
-251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as usize)?;
-    |                                                                                                     ^^^^^^^^
-    |
-help: first cast to a pointer `as *const ()`
-    |
-251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
-    |                                                                                                     ++++++++++++
-
-warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 49s
-cargo exit=0
--rwxr-xr-x 2 runner runner 14845952 Nov 17 03:37 target/aarch64-linux-android/release/libhachimi.so
-sha256: 9caef6f3b314e01a60004932ad636f693cb516ce4fcbffb8b06d622568ab165a
+For more information about this error, try `rustc --explain E0252`.
+error: could not compile `hachimi` (lib) due to 1 previous error
