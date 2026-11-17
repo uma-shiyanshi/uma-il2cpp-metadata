@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# meta_patch + 类型/字段修正 → 编译 → 上传 release；日志落盘
+# meta-only：无法走 metadata 的 hook 直接跳过，绝不回退 inline（ACE 会比对代码字节）
 on:
   push:
     paths:
@@ -35,6 +35,24 @@ jobs:
           sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
           sed -i 's/methodPointer = new_fn as \*mut c_void;/methodPointer = new_fn;/' hz/src/il2cpp/symbols.rs
 
+          python3 - hz <<'PY'
+          import pathlib
+          p = pathlib.Path("hz/src/il2cpp/hook/mod.rs")
+          s = p.read_text(encoding="utf-8")
+          old = ('                if !done {\n'
+                 '                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n'
+                 '                    if let Err(e) = res { error!("{}", e); }\n'
+                 '                }\n')
+          new = ('                if !done {\n'
+                 '                    warn!("skip (no meta): {}", stringify!($hook));\n'
+                 '                }\n')
+          if old in s:
+              p.write_text(s.replace(old, new, 1), encoding="utf-8")
+              print("meta-only patched")
+          else:
+              print("anchor missing")
+          PY
+
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CC_aarch64_linux_android="$TC/aarch64-linux-android26-clang"
@@ -56,7 +74,7 @@ jobs:
         run: |
           cd "$GITHUB_WORKSPACE"
           if [ -f libhachimi-meta.so ]; then
-            NAME="libhachimi-meta-$(date -u +%m%d-%H%M).so"
+            NAME="libhachimi-metaonly-$(date -u +%m%d-%H%M).so"
             cp libhachimi-meta.so "$NAME"
             gh release view builds -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
             gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
