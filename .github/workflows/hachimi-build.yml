@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 符号解析 v3：读 /proc/self/mem（不碰 linker 锁），从内存里的 ELF 结构取 dynsym
+# mem3 + 动态表诊断（打印 phnum/dyn_v 与前 8 个 DT 项，并尝试两种基址读法）
 on:
   push:
     paths:
@@ -17,74 +17,78 @@ jobs:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - uses: actions/checkout@v4
-      - name: Rust + Android target
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: rust
         run: |
-          LOG="$GITHUB_WORKSPACE/h.log"; : > "$LOG"
-          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal >> "$LOG" 2>&1
-          . "$HOME/.cargo/env"
-          rustup target add aarch64-linux-android >> "$LOG" 2>&1
-      - name: 拉源码
-        run: |
-          LOG="$GITHUB_WORKSPACE/h.log"
-          git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
-      - name: 写 symbols_impl
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
+          . "$HOME/.cargo/env"; rustup target add aarch64-linux-android
+      - name: clone
+        run: git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz"
+      - name: write symbols_impl
         run: |
           cat > /tmp/sym.rs <<'RSEOF'
           use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
           use std::os::unix::fs::FileExt;
 
           static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
-
           const DT_HASH: u64 = 4;
           const DT_STRTAB: u64 = 5;
           const DT_SYMTAB: u64 = 6;
           const PT_DYNAMIC: u32 = 2;
 
           fn u16le(b: &[u8], o: usize) -> u16 { u16::from_le_bytes([b[o], b[o + 1]]) }
-          fn u32le(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]) }
-          fn u64le(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o], b[o+1], b[o+2], b[o+3], b[o+4], b[o+5], b[o+6], b[o+7]]) }
+          fn u32le(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o+1], b[o+2], b[o+3]]) }
+          fn u64le(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o],b[o+1],b[o+2],b[o+3],b[o+4],b[o+5],b[o+6],b[o+7]]) }
 
-          fn il2cpp_base() -> Option<usize> {
-              let maps = std::fs::read_to_string("/proc/self/maps").ok()?;
-              let mut base = usize::MAX;
-              for line in maps.lines() {
-                  if line.contains("libil2cpp.so") {
-                      if let Some(rng) = line.split_whitespace().next() {
-                          if let Some(s) = rng.split('-').next() {
-                              if let Ok(a) = usize::from_str_radix(s, 16) { if a < base { base = a; } }
+          fn bases() -> Vec<usize> {
+              let mut v = Vec::new();
+              if let Ok(maps) = std::fs::read_to_string("/proc/self/maps") {
+                  for line in maps.lines() {
+                      if line.contains("libil2cpp.so") {
+                          if let Some(rng) = line.split_whitespace().next() {
+                              if let Some(s) = rng.split('-').next() {
+                                  if let Ok(a) = usize::from_str_radix(s, 16) { if !v.contains(&a) { v.push(a); } }
+                              }
                           }
                       }
                   }
               }
-              if base == usize::MAX { None } else { Some(base) }
+              v.sort();
+              v
           }
 
-          fn build_cache() -> HashMap<String, usize> {
-              let mut map = HashMap::new();
-              let Some(base) = il2cpp_base() else { log::warn!("symbols: no base"); return map };
-              let Ok(f) = std::fs::File::open("/proc/self/mem") else { log::warn!("symbols: mem open fail"); return map };
+          fn parse(f: &std::fs::File, base: usize) -> Option<(HashMap<String, usize>, u64, u64, usize, usize)> {
               let mut hdr = [0u8; 64];
-              if f.read_exact_at(&mut hdr, base as u64).is_err() { log::warn!("symbols: hdr read fail"); return map; }
-              if &hdr[0..4] != b"\x7fELF" { log::warn!("symbols: bad magic"); return map; }
+              f.read_exact_at(&mut hdr, base as u64).ok()?;
+              if &hdr[0..4] != b"\x7fELF" { return None; }
               let phoff = u64le(&hdr, 0x20) as usize;
               let phentsize = u16le(&hdr, 0x36) as usize;
               let phnum = u16le(&hdr, 0x38) as usize;
+              log::info!("symbols: base={:#x} phoff={} phnum={} phent={}", base, phoff, phnum, phentsize);
               let mut dyn_v: usize = 0;
               for i in 0..phnum {
                   let mut ph = [0u8; 56];
                   if f.read_exact_at(&mut ph, (base + phoff + i * phentsize) as u64).is_err() { break; }
-                  if u32le(&ph, 0) == PT_DYNAMIC { dyn_v = u64le(&ph, 0x10) as usize; }
+                  let pt = u32le(&ph, 0);
+                  if pt == PT_DYNAMIC { dyn_v = u64le(&ph, 0x10) as usize; }
               }
-              if dyn_v == 0 { log::warn!("symbols: no PT_DYNAMIC"); return map; }
+              log::info!("symbols: dyn_v={:#x}", dyn_v);
+              if dyn_v == 0 { return None; }
               let mut symtab: u64 = 0; let mut strtab: u64 = 0; let mut hash: u64 = 0;
+              let mut shown = 0;
               for i in 0..512 {
                   let mut d = [0u8; 16];
                   if f.read_exact_at(&mut d, (base + dyn_v + i * 16) as u64).is_err() { break; }
                   let tag = u64le(&d, 0); let val = u64le(&d, 8);
+                  if shown < 8 { log::info!("symbols: DT[{}] tag={:#x} val={:#x}", i, tag, val); shown += 1; }
                   if tag == 0 { break; }
                   match tag { DT_SYMTAB => symtab = val, DT_STRTAB => strtab = val, DT_HASH => hash = val, _ => {} }
               }
-              if symtab == 0 || strtab == 0 { log::warn!("symbols: no symtab/strtab"); return map; }
+              log::info!("symbols: symtab={:#x} strtab={:#x} hash={:#x}", symtab, strtab, hash);
+              if symtab == 0 || strtab == 0 { return None; }
               let mut count: usize = 0;
               if hash != 0 {
                   let mut hb = [0u8; 8];
@@ -93,6 +97,7 @@ jobs:
               if count == 0 || count > 500000 {
                   count = if strtab > symtab { ((strtab - symtab) / 24) as usize } else { 20000 };
               }
+              let mut map = HashMap::new();
               let mut inserted = 0usize;
               for i in 0..count {
                   let mut s = [0u8; 24];
@@ -109,8 +114,19 @@ jobs:
                       inserted += 1;
                   }
               }
-              log::info!("symbols: base={:#x} syms={} count={}", base, inserted, count);
-              map
+              Some((map, symtab, strtab, count, inserted))
+          }
+
+          fn build_cache() -> HashMap<String, usize> {
+              let Ok(f) = std::fs::File::open("/proc/self/mem") else { return HashMap::new() };
+              for b in bases() {
+                  if let Some((map, _s, _t, c, n)) = parse(&f, b) {
+                      log::info!("symbols: OK base={:#x} count={} inserted={}", b, c, n);
+                      return map;
+                  }
+              }
+              log::warn!("symbols: failed");
+              HashMap::new()
           }
 
           pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
@@ -123,10 +139,9 @@ jobs:
           RSEOF
           sed -i 's/^          //' /tmp/sym.rs
           cp /tmp/sym.rs "$GITHUB_WORKSPACE/hz/src/android/symbols_impl.rs"
-      - name: 打补丁
+      - name: patch
         run: |
-          LOG="$GITHUB_WORKSPACE/h.log"
-          python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
+          python3 - "$GITHUB_WORKSPACE/hz" <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
           cfg = root / "src/core/hachimi.rs"
@@ -144,35 +159,25 @@ jobs:
           new = ('    if !hachimi.config.load().disable_dlopen_hook {\n'
                  '        info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
                  '        hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;\n'
-                 '    } else {\n'
-                 '        info!("dlopen hook disabled by config");\n'
-                 '    }')
+                 '    } else { info!("dlopen hook disabled by config"); }')
           hk.write_text(h.replace(old, new, 1), encoding="utf-8")
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
-          old2 = ('    info!("JNI_OnLoad");\n'
-                  '    orig_fn(vm, reserved)\n')
+          old2 = '    info!("JNI_OnLoad");\n    orig_fn(vm, reserved)\n'
           new2 = ('    info!("JNI_OnLoad");\n'
                   '    if Hachimi::instance().config.load().late_load {\n'
-                  '        info!("late_load: skip orig JNI_OnLoad");\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
                   '            std::thread::spawn(|| {\n'
                   '                let mut done = false;\n'
                   '                for _ in 0..360 {\n'
                   '                    std::thread::sleep(std::time::Duration::from_millis(500));\n'
-                  '                    let hachimi = Hachimi::instance();\n'
+                  '                    let h = Hachimi::instance();\n'
                   '                    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();\n'
-                  '                    let hit = maps.lines().any(|l| l.contains("libil2cpp.so"));\n'
-                  '                    if hit && !done {\n'
-                  '                        info!("poll: il2cpp present, mem resolver");\n'
-                  '                        hachimi.on_dlopen("libil2cpp.so", 1);\n'
+                  '                    if !done && maps.lines().any(|l| l.contains("libil2cpp.so")) {\n'
+                  '                        h.on_dlopen("libil2cpp.so", 1);\n'
                   '                        done = true;\n'
                   '                        for _ in 0..6 { std::thread::sleep(std::time::Duration::from_millis(500)); }\n'
-                  '                        info!("poll: forcing cri stage");\n'
-                  '                        if hachimi.on_dlopen("libcri_ware_unity.so", 1) {\n'
-                  '                            info!("poll: hooking triggered");\n'
-                  '                            break;\n'
-                  '                        }\n'
+                  '                        if h.on_dlopen("libcri_ware_unity.so", 1) { break; }\n'
                   '                    }\n'
                   '                }\n'
                   '            });\n'
@@ -182,11 +187,10 @@ jobs:
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m
           mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
-          print("OK patches")
+          print("patched")
           PY
-      - name: 交叉编译
+      - name: build
         run: |
-          LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
@@ -197,24 +201,13 @@ jobs:
           export CXXSTDLIB="c++_static"
           export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
           cd "$GITHUB_WORKSPACE/hz"
-          cargo build --release --target aarch64-linux-android >> "$LOG" 2>&1
-          echo "cargo exit=$?" >> "$LOG"
-          ls -l target/aarch64-linux-android/release/libhachimi.so >> "$LOG" 2>&1
-      - name: 发布
+          cargo build --release --target aarch64-linux-android 2>&1 | tail -5
+      - name: publish
         if: always()
         run: |
-          LOG="$GITHUB_WORKSPACE/h.log"
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
-            echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
-            gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
-              gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-mem3-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-mem3-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1 || true
+            gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试" || true
+            cp "$SO" "libhachimi-diag-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-diag-*.so -R "$GITHUB_REPOSITORY" --clobber || true
           fi
-          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > hachimi-build-status.txt
-          git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
-          git add hachimi-build-status.txt || true
-          git commit -m "ci: hachimi ($GITHUB_RUN_ID)" || echo "no change"
-          git pull --rebase --autostash >> /dev/null 2>&1 || true
-          git push || true
