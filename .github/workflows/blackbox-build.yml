@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v8：用游戏自己的 ClassLoader 反射 loadLibrary0 装载 Hachimi（同一 linker 命名空间）
+# 晚加载 v9：nativelib 准备放在 createPackageContext 之前；装载线程放在之后（用 packageContext 的 ClassLoader）
 on:
   push:
     paths:
@@ -75,7 +75,8 @@ jobs:
           bt = root / "Bcore/src/main/java/top/niunaijun/blackbox/app/BActivityThread.java"
           b = bt.read_text(encoding="utf-8")
           anchor3 = "        Context packageContext = createPackageContext(applicationInfo);"
-          redirect = (
+
+          setup = (
             "        android.util.Log.i(\"BB_INJECT\", \"guest processName=\" + processName);\n"
             "        if (\"com.bilibili.umamusu\".equals(processName)) {\n"
             "            try {\n"
@@ -125,21 +126,30 @@ jobs:
             "                        android.util.Log.i(\"BB_INJECT\", \"cfg written len=\" + __cfgDst.length());\n"
             "                    }\n"
             "                } catch (Throwable __ce) { android.util.Log.e(\"BB_INJECT\", \"cfg failed\", __ce); }\n"
+            "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
+            "        }\n")
+
+          loadblock = (
+            "\n        if (\"com.bilibili.umamusu\".equals(processName)) {\n"
+            "            try {\n"
             "                final ClassLoader __gameCl = packageContext.getClassLoader();\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
             "                        Thread.sleep(8000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late load via game ClassLoader: \" + __gameCl);\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"late load via game CL: \" + __gameCl);\n"
             "                        java.lang.reflect.Method __m = java.lang.Runtime.class.getDeclaredMethod(\"loadLibrary0\", ClassLoader.class, String.class);\n"
             "                        __m.setAccessible(true);\n"
             "                        __m.invoke(java.lang.Runtime.getRuntime(), __gameCl, \"hachimi\");\n"
             "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded via game CL\");\n"
             "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"game CL load failed\", __t); }\n"
             "                } }).start();\n"
-            "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
+            "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"load block failed\", t); }\n"
             "        }\n")
+
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK game CL load")
+              b = b.replace(anchor3, setup + anchor3, 1)
+              b = b.replace(anchor3, anchor3 + loadblock, 1)
+              bt.write_text(b, encoding="utf-8"); print("OK two-stage patch")
           PY
       - name: 编译
         run: |
@@ -157,8 +167,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-gamecl-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-gamecl-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-gamecl2-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-gamecl2-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
