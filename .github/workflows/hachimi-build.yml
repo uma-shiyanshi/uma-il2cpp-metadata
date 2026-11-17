@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 对抗 ACE 自杀：hook libc kill()，吞掉对自己发的 SIGKILL
+# metadata hook：直接改写 MethodInfo->methodPointer（不动代码字节，绕开 ACE 的 opcode 校验）
 on:
   push:
     paths:
@@ -27,7 +27,7 @@ jobs:
           . "$HOME/.cargo/env"; rustup target add aarch64-linux-android
       - name: clone
         run: git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz"
-      - name: write symbols_impl
+      - name: symbols_impl（同前）
         run: |
           cat > /tmp/sym.rs <<'RSEOF'
           use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
@@ -167,11 +167,101 @@ jobs:
           RSEOF
           sed -i 's/^          //' /tmp/sym.rs
           cp /tmp/sym.rs "$GITHUB_WORKSPACE/hz/src/android/symbols_impl.rs"
-      - name: patch
+      - name: patch（metadata hook 三处改动）
         run: |
           python3 - "$GITHUB_WORKSPACE/hz" <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
+
+          # 1) symbols.rs：记录 methodPointer -> MethodInfo*，并提供改写函数
+          sy = root / "src/il2cpp/symbols.rs"
+          s = sy.read_text(encoding="utf-8")
+          if "META_MAP" not in s:
+              s = s.replace(
+                  "use crate::core::Hachimi;",
+                  "use crate::core::Hachimi;\nuse std::collections::HashMap;\nuse std::sync::Mutex;\n\n"
+                  "pub static META_MAP: once_cell::sync::Lazy<Mutex<HashMap<usize, usize>>> = "
+                  "once_cell::sync::Lazy::new(|| Mutex::new(HashMap::new()));\n", 1)
+              old_addr = ("    if let Ok(method) = res {\n"
+                          "        unsafe { (*method).methodPointer }\n"
+                          "    }")
+              new_addr = ("    if let Ok(method) = res {\n"
+                          "        unsafe {\n"
+                          "            let p = (*method).methodPointer as usize;\n"
+                          "            if p != 0 { META_MAP.lock().unwrap().insert(p, method as usize); }\n"
+                          "            p\n"
+                          "        }\n"
+                          "    }")
+              s = s.replace(old_addr, new_addr)
+              sy.write_text(s, encoding="utf-8")
+              print("symbols.rs 记录映射")
+
+              ap = ("\n\npub fn method_info_of(addr: usize) -> Option<usize> {\n"
+                    "    META_MAP.lock().unwrap().get(&addr).copied()\n"
+                    "}\n\n"
+                    "pub unsafe fn patch_method_pointer(method_info: usize, new_fn: usize) -> Option<usize> {\n"
+                    "    let mi = method_info as *mut Il2CppMethodInfo;\n"
+                    "    if mi.is_null() { return None; }\n"
+                    "    let old = (*mi).methodPointer as usize;\n"
+                    "    (*mi).methodPointer = new_fn as *mut c_void;\n"
+                    "    Some(old)\n"
+                    "}\n")
+              with open(sy, "a", encoding="utf-8") as f:
+                  f.write(ap)
+
+          # 2) hook/mod.rs：new_hook! 优先走 metadata（指针替换）
+          hm = root / "src/il2cpp/hook/mod.rs"
+          h = hm.read_text(encoding="utf-8")
+          old_macro = ("            if ($orig != 0) {\n"
+                       "                let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n"
+                       "                if let Err(e) = res {\n"
+                       "                    error!(\"{}\", e);\n"
+                       "                }\n"
+                       "            }")
+          new_macro = ("            if ($orig != 0) {\n"
+                       "                let mut done = false;\n"
+                       "                if let Some(mi) = crate::il2cpp::symbols::method_info_of($orig as usize) {\n"
+                       "                    if let Some(old) = unsafe { crate::il2cpp::symbols::patch_method_pointer(mi, $hook as usize) } {\n"
+                       "                        crate::core::interceptor::register_meta_orig($hook as usize, old);\n"
+                       "                        info!(\"meta_hook!: {} (mi={:#x})\", stringify!($hook), mi);\n"
+                       "                        done = true;\n"
+                       "                    }\n"
+                       "                }\n"
+                       "                if !done {\n"
+                       "                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n"
+                       "                    if let Err(e) = res {\n"
+                       "                        error!(\"{}\", e);\n"
+                       "                    }\n"
+                       "                }\n"
+                       "            }")
+          assert old_macro in h, "hook/mod.rs 锚点未命中"
+          hm.write_text(h.replace(old_macro, new_macro, 1), encoding="utf-8")
+          print("hook/mod.rs metadata 分支")
+
+          # 3) interceptor.rs：get_orig_fn! 优先取 metadata 原地址
+          ic = root / "src/core/interceptor.rs"
+          c = ic.read_text(encoding="utf-8")
+          if "register_meta_orig" not in c:
+              c = c.replace(
+                  "macro_rules! get_orig_fn {",
+                  "static META_ORIG: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<usize, usize>>> =\n"
+                  "    once_cell::sync::Lazy::new(|| std::sync::Mutex::new(std::collections::HashMap::new()));\n\n"
+                  "pub fn register_meta_orig(hook: usize, orig: usize) {\n"
+                  "    META_ORIG.lock().unwrap().insert(hook, orig);\n"
+                  "}\n\n"
+                  "pub fn get_orig_addr(hook: usize) -> usize {\n"
+                  "    if let Some(&a) = META_ORIG.lock().unwrap().get(&hook) { return a; }\n"
+                  "    crate::core::Hachimi::instance().interceptor.get_trampoline_addr(hook)\n"
+                  "}\n\n"
+                  "macro_rules! get_orig_fn {", 1)
+              old_g = ("        unsafe { std::mem::transmute::<usize, $type>(crate::core::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }")
+              new_g = ("        unsafe { std::mem::transmute::<usize, $type>(crate::core::interceptor::get_orig_addr($hook as usize)) }")
+              assert old_g in c, "get_orig_fn 锚点未命中"
+              c = c.replace(old_g, new_g, 1)
+              ic.write_text(c, encoding="utf-8")
+              print("interceptor.rs get_orig_fn")
+
+          # 4) 配置项 + JNI_OnLoad + late load（同前）
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "poll_il2cpp" not in t:
@@ -181,20 +271,19 @@ jobs:
                                     "\n    #[serde(default)]\n    pub poll_il2cpp: bool,"), 1)
               cfg.write_text(t, encoding="utf-8")
           hk = root / "src/android/hook.rs"
-          h = hk.read_text(encoding="utf-8")
+          hkf = hk.read_text(encoding="utf-8")
           old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
                  '    hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;')
           new = ('    if !hachimi.config.load().disable_dlopen_hook {\n'
                  '        info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
                  '        hachimi.interceptor.hook(dlopen_orig, dlopen_hook)?;\n'
                  '    } else { info!("dlopen hook disabled by config"); }')
-          hk.write_text(h.replace(old, new, 1), encoding="utf-8")
+          hk.write_text(hkf.replace(old, new, 1), encoding="utf-8")
 
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
           old2 = '    info!("JNI_OnLoad");\n    orig_fn(vm, reserved)\n'
           new2 = ('    info!("JNI_OnLoad");\n'
-                  '    install_kill_hook();\n'
                   '    if Hachimi::instance().config.load().late_load {\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
                   '            std::thread::spawn(|| {\n'
@@ -217,43 +306,8 @@ jobs:
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m
-          m = m.replace(old2, new2, 1)
-          tail = '''
-
-          static ORIG_KILL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
-
-          extern "C" fn kill_hook(pid: i32, sig: i32) -> i32 {
-              if sig == 9 {
-                  let me = std::process::id() as i32;
-                  if pid == me || pid == -me || pid == 0 {
-                      log::warn!("blocked SIGKILL self (pid={})", pid);
-                      return 0;
-                  }
-              }
-              let p = ORIG_KILL.load(std::sync::atomic::Ordering::Relaxed);
-              if p == 0 { return -1; }
-              let f: extern "C" fn(i32, i32) -> i32 = unsafe { std::mem::transmute(p) };
-              f(pid, sig)
-          }
-
-          pub fn install_kill_hook() {
-              unsafe {
-                  let h = Hachimi::instance();
-                  let k = crate::symbols_impl::dlsym(1 as *mut std::ffi::c_void, "kill");
-                  if k == 0 { log::warn!("kill not resolved"); return; }
-                  match h.interceptor.hook(k, kill_hook as usize) {
-                      Ok(_) => {
-                          let tr = h.interceptor.get_trampoline_addr(k);
-                          ORIG_KILL.store(tr, std::sync::atomic::Ordering::Relaxed);
-                          log::info!("kill hook installed at {:#x} tramp {:#x}", k, tr);
-                      }
-                      Err(e) => log::warn!("kill hook failed: {}", e),
-                  }
-              }
-          }
-          '''
-          mn.write_text(m + tail, encoding="utf-8")
-          print("patched")
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
+          print("main.rs / hook.rs ok")
           PY
       - name: build
         run: |
@@ -267,13 +321,13 @@ jobs:
           export CXXSTDLIB="c++_static"
           export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
           cd "$GITHUB_WORKSPACE/hz"
-          cargo build --release --target aarch64-linux-android 2>&1 | tail -12
+          cargo build --release --target aarch64-linux-android 2>&1 | tail -20
       - name: publish
         if: always()
         run: |
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试" || true
-            cp "$SO" "libhachimi-kill-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-kill-*.so -R "$GITHUB_REPOSITORY" --clobber || true
+            cp "$SO" "libhachimi-meta-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-meta-*.so -R "$GITHUB_REPOSITORY" --clobber || true
           fi
