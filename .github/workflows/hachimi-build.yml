@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 取 tools/meta_patch.sh → 修正类型名 → 编译 → 上传 release；日志落盘
+# meta_patch + 类型/字段修正 → 编译 → 上传 release；日志落盘
 on:
   push:
     paths:
@@ -33,6 +33,7 @@ jobs:
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
           bash tools/meta_patch.sh hz
           sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
+          sed -i 's/methodPointer = new_fn as \*mut c_void;/methodPointer = new_fn;/' hz/src/il2cpp/symbols.rs
 
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
