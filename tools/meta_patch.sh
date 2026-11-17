@@ -1,10 +1,9 @@
 #!/bin/bash
-# 在 Hachimi 源码目录上应用：symbols_impl(自解析) + metadata hook + late_load/poll 补丁
-# 用法: bash meta_patch.sh <hachimi 源码目录>
+# symbols 自解析 + metadata hook + late_load/poll + sendSignal 拦截
 set -e
 ROOT="${1:-hz}"
 
-cat > /tmp/sym.rs <<'RSEOF'
+cat > "$ROOT/src/android/symbols_impl.rs" <<'RSEOF'
 use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
 use std::os::unix::fs::FileExt;
 
@@ -118,7 +117,38 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
     libc::dlsym(handle, cs.as_ptr()) as usize
 }
 RSEOF
-cp /tmp/sym.rs "$ROOT/src/android/symbols_impl.rs"
+
+cat >> "$ROOT/src/android/main.rs" <<'RSEOF'
+
+static ORIG_SEND_SIGNAL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+
+extern "C" fn send_signal_hook(_env: *mut std::ffi::c_void, _clazz: *mut std::ffi::c_void, pid: i32, sig: i32) -> i32 {
+    if sig == 9 {
+        let me = std::process::id() as i32;
+        if pid == me || pid == -me || pid == 0 { return 0; }
+    }
+    let p = ORIG_SEND_SIGNAL.load(std::sync::atomic::Ordering::Relaxed);
+    if p == 0 { return -1; }
+    let f: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, i32, i32) -> i32 = unsafe { std::mem::transmute(p) };
+    f(_env, _clazz, pid, sig)
+}
+
+pub fn install_send_signal_hook() {
+    unsafe {
+        let addr = crate::symbols_impl::dlsym(1 as *mut std::ffi::c_void, "android_os_Process_sendSignal");
+        if addr == 0 { log::warn!("sendSignal symbol not found"); return; }
+        let h = Hachimi::instance();
+        match h.interceptor.hook(addr, send_signal_hook as usize) {
+            Ok(_) => {
+                let tr = h.interceptor.get_trampoline_addr(addr);
+                ORIG_SEND_SIGNAL.store(tr, std::sync::atomic::Ordering::Relaxed);
+                log::info!("sendSignal hook ok addr={:#x}", addr);
+            }
+            Err(e) => log::warn!("sendSignal hook failed: {}", e),
+        }
+    }
+}
+RSEOF
 
 python3 - "$ROOT" <<'PY'
 import sys, pathlib
@@ -127,7 +157,6 @@ root = pathlib.Path(sys.argv[1])
 sy = root / "src/il2cpp/symbols.rs"
 s = sy.read_text(encoding="utf-8")
 if "META_MAP" not in s:
-    # 只插入静态变量（全限定类型，避免与已有 use 冲突）
     s = s.replace("use crate::core::Hachimi;",
         "use crate::core::Hachimi;\n"
         "pub static META_MAP: once_cell::sync::Lazy<std::sync::Mutex<std::collections::HashMap<usize, usize>>> = "
@@ -142,10 +171,10 @@ if "META_MAP" not in s:
         f.write("\n\npub fn method_info_of(addr: usize) -> Option<usize> {\n"
                 "    META_MAP.lock().unwrap().get(&addr).copied()\n}\n\n"
                 "pub unsafe fn patch_method_pointer(mi_addr: usize, new_fn: usize) -> Option<usize> {\n"
-                "    let mi = mi_addr as *mut Il2CppMethodInfo;\n"
+                "    let mi = mi_addr as *mut MethodInfo;\n"
                 "    if mi.is_null() { return None; }\n"
                 "    let old = (*mi).methodPointer as usize;\n"
-                "    (*mi).methodPointer = new_fn as *mut c_void;\n"
+                "    (*mi).methodPointer = new_fn;\n"
                 "    Some(old)\n}\n")
 
 hm = root / "src/il2cpp/hook/mod.rs"
@@ -162,8 +191,7 @@ new_macro = ("            if ($orig != 0) {\n"
              "                        info!(\"meta_hook!: {}\", stringify!($hook));\n"
              "                        done = true;\n                    }\n                }\n"
              "                if !done {\n"
-             "                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n"
-             "                    if let Err(e) = res { error!(\"{}\", e); }\n"
+             "                    warn!(\"skip (no meta): {}\", stringify!($hook));\n"
              "                }\n            }")
 if old_macro in h:
     hm.write_text(h.replace(old_macro, new_macro, 1), encoding="utf-8")
@@ -206,6 +234,7 @@ mn = root / "src/android/main.rs"
 m = mn.read_text(encoding="utf-8")
 old2 = '    info!("JNI_OnLoad");\n    orig_fn(vm, reserved)\n'
 new2 = ('    info!("JNI_OnLoad");\n'
+        '    install_send_signal_hook();\n'
         '    if Hachimi::instance().config.load().late_load {\n'
         '        if Hachimi::instance().config.load().poll_il2cpp {\n'
         '            std::thread::spawn(|| {\n'
@@ -227,5 +256,5 @@ new2 = ('    info!("JNI_OnLoad");\n'
 if old2 in m:
     mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
 
-print("meta_patch applied")
+print("meta_patch(+sendSignal) applied")
 PY
