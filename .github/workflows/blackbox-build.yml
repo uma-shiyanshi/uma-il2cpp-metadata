@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v11：反射 loadLibrary0(ClassLoader,String,boolean) 且 isAbsolute=true（按路径 + 游戏命名空间）
+# 晚加载 v12：把 libtprt/libtersafe2 复制成真实文件并用 System.load 预加载，满足 libil2cpp 的 DT_NEEDED
 on:
   push:
     paths:
@@ -82,7 +82,6 @@ jobs:
             "            try {\n"
             "                android.content.Context __ctx = top.niunaijun.blackbox.BlackBoxCore.getContext();\n"
             "                java.io.File __srcDir = new java.io.File(applicationInfo.nativeLibraryDir);\n"
-            "                java.io.File __realMain = new java.io.File(__srcDir, \"libmain.so\");\n"
             "                java.io.File __nl = new java.io.File(__ctx.getFilesDir(), \"nativelib\");\n"
             "                if (!__nl.exists()) { __nl.mkdirs(); }\n"
             "                java.io.File __h = new java.io.File(__nl, \"libhachimi.so\");\n"
@@ -94,20 +93,23 @@ jobs:
             "                    while ((__n = __in.read(__buf)) > 0) { __out.write(__buf, 0, __n); }\n"
             "                    __in.close(); __out.close();\n"
             "                }\n"
-            "                java.io.File[] __fs = __srcDir.listFiles();\n"
-            "                if (__fs != null) for (java.io.File __f : __fs) {\n"
-            "                    if (!__f.getName().endsWith(\".so\")) continue;\n"
-            "                    if (__f.getName().equals(\"libmain.so\")) continue;\n"
-            "                    java.io.File __t = new java.io.File(__nl, __f.getName());\n"
-            "                    if (__t.exists()) continue;\n"
-            "                    try { android.system.Os.symlink(__f.getAbsolutePath(), __t.getAbsolutePath()); } catch (Throwable __e) {}\n"
+            "                for (String __pn : new String[]{\"libtprt.so\", \"libtersafe2.so\"}) {\n"
+            "                    java.io.File __src = new java.io.File(__srcDir, __pn);\n"
+            "                    java.io.File __dst = new java.io.File(__nl, __pn);\n"
+            "                    if (__src.exists() && (!__dst.exists() || __dst.length() != __src.length())) {\n"
+            "                        java.io.InputStream __i2 = new java.io.FileInputStream(__src);\n"
+            "                        java.io.OutputStream __o2 = new java.io.FileOutputStream(__dst);\n"
+            "                        byte[] __b2 = new byte[262144]; int __n2;\n"
+            "                        while ((__n2 = __i2.read(__b2)) > 0) { __o2.write(__b2, 0, __n2); }\n"
+            "                        __i2.close(); __o2.close();\n"
+            "                    }\n"
             "                }\n"
             "                java.io.File __lm = new java.io.File(__nl, \"libmain.so\");\n"
             "                if (__lm.exists()) __lm.delete();\n"
-            "                android.system.Os.symlink(__realMain.getAbsolutePath(), __lm.getAbsolutePath());\n"
+            "                android.system.Os.symlink(new java.io.File(__srcDir, \"libmain.so\").getAbsolutePath(), __lm.getAbsolutePath());\n"
             "                java.io.File __ol = new java.io.File(__nl, \"libmain_orig.so\");\n"
             "                if (__ol.exists()) __ol.delete();\n"
-            "                android.system.Os.symlink(__realMain.getAbsolutePath(), __ol.getAbsolutePath());\n"
+            "                android.system.Os.symlink(new java.io.File(__srcDir, \"libmain.so\").getAbsolutePath(), __ol.getAbsolutePath());\n"
             "                java.io.File __stale = new java.io.File(__ctx.getFilesDir(), \"libmain.so\");\n"
             "                if (__stale.exists()) __stale.delete();\n"
             "                applicationInfo.nativeLibraryDir = __nl.getAbsolutePath();\n"
@@ -133,33 +135,19 @@ jobs:
             "\n        if (\"com.bilibili.umamusu\".equals(processName)) {\n"
             "            try {\n"
             "                java.io.File __nl2 = new java.io.File(top.niunaijun.blackbox.BlackBoxCore.getContext().getFilesDir(), \"nativelib\");\n"
+            "                final String __tprt = new java.io.File(__nl2, \"libtprt.so\").getAbsolutePath();\n"
+            "                final String __tsf = new java.io.File(__nl2, \"libtersafe2.so\").getAbsolutePath();\n"
             "                final String __hPath = new java.io.File(__nl2, \"libhachimi.so\").getAbsolutePath();\n"
-            "                final ClassLoader __gameCl = packageContext.getClassLoader();\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
-            "                        Thread.sleep(8000);\n"
-            "                        java.lang.Runtime __rt = java.lang.Runtime.getRuntime();\n"
-            "                        boolean __ok = false;\n"
-            "                        try {\n"
-            "                            java.lang.reflect.Method __m3 = java.lang.Runtime.class.getDeclaredMethod(\"loadLibrary0\", ClassLoader.class, String.class, boolean.class);\n"
-            "                            __m3.setAccessible(true);\n"
-            "                            __m3.invoke(__rt, __gameCl, __hPath, Boolean.TRUE);\n"
-            "                            __ok = true;\n"
-            "                            android.util.Log.i(\"BB_INJECT\", \"loaded via loadLibrary0(CL,path,true)\");\n"
-            "                        } catch (Throwable __e1) { android.util.Log.e(\"BB_INJECT\", \"abs-load 3arg failed\", __e1); }\n"
-            "                        if (!__ok) {\n"
-            "                            try {\n"
-            "                                java.lang.reflect.Method __m4 = java.lang.Runtime.class.getDeclaredMethod(\"load0\", String.class, boolean.class);\n"
-            "                                __m4.setAccessible(true);\n"
-            "                                __m4.invoke(__rt, __hPath, Boolean.TRUE);\n"
-            "                                __ok = true;\n"
-            "                                android.util.Log.i(\"BB_INJECT\", \"loaded via load0(path,true)\");\n"
-            "                            } catch (Throwable __e2) { android.util.Log.e(\"BB_INJECT\", \"load0 failed\", __e2); }\n"
-            "                        }\n"
-            "                        if (!__ok) {\n"
-            "                            System.load(__hPath);\n"
-            "                            android.util.Log.i(\"BB_INJECT\", \"loaded via System.load (host ns)\");\n"
-            "                        }\n"
+            "                        Thread.sleep(6000);\n"
+            "                        try { System.load(__tprt); android.util.Log.i(\"BB_INJECT\", \"tprt preloaded(abs)\"); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tprt preload failed\", __e); }\n"
+            "                        try { System.load(__tsf); android.util.Log.i(\"BB_INJECT\", \"tersafe2 preloaded(abs)\"); }\n"
+            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tersafe2 preload failed\", __e); }\n"
+            "                        Thread.sleep(2000);\n"
+            "                        System.load(__hPath);\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late, abs)\");\n"
             "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"late load failed\", __t); }\n"
             "                } }).start();\n"
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"load block failed\", t); }\n"
@@ -168,7 +156,7 @@ jobs:
           if anchor3 in b and "BB_INJECT" not in b:
               b = b.replace(anchor3, setup + anchor3, 1)
               b = b.replace(anchor3, anchor3 + loadblock, 1)
-              bt.write_text(b, encoding="utf-8"); print("OK abs-load v11")
+              bt.write_text(b, encoding="utf-8"); print("OK preload tprt(real copy)")
           PY
       - name: 编译
         run: |
@@ -186,8 +174,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-abs2-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-abs2-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-preload-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-preload-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
