@@ -1,14 +1,4 @@
-run: 43883541056 2026-11-16T14:15:43Z
-
-warning: direct cast of function item into an integer
-   --> src/core/interceptor.rs:102:125
-    |
-100 | ...
-101 | ...
-102 | ...::Hachimi::instance().interceptor.get_trampoline_addr($hook as usize)) }
-    |                                                                ^^^^^^^^
-    |
-   ::: src/android/gui_impl/input_hook.rs:192:5
+run: 44005721862 2026-11-17T02:50:51Z
     |
 192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
     |     ---------------------------------------------------- in this macro invocation
@@ -45,7 +35,7 @@ help: first cast to a pointer `as *const ()`
     |                                                                                                     ++++++++++++
 
 warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 31s
+    Finished `release` profile [optimized] target(s) in 1m 24s
 cargo exit=0
--rwxr-xr-x 2 runner runner 14840472 Nov 16 14:15 target/aarch64-linux-android/release/libhachimi.so
-sha256: cf4e20e72de188556260474169bc5eb5011154b53d9dbd8b0598432319c65c1a
+-rwxr-xr-x 2 runner runner 14848656 Nov 17 02:50 target/aarch64-linux-android/release/libhachimi.so
+sha256: 8555f1c37ac23106cdd8888477e5ed2b704ecc0bd709ceed260ac03957c72e8f
