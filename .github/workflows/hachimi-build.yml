@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# mem3 + 动态表诊断（打印 phnum/dyn_v 与前 8 个 DT 项，并尝试两种基址读法）
+# 修正：DT_SYMTAB/STRTAB/HASH 是未重定位偏移，需要 +base
 on:
   push:
     paths:
@@ -43,52 +43,52 @@ jobs:
           fn u32le(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o+1], b[o+2], b[o+3]]) }
           fn u64le(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o],b[o+1],b[o+2],b[o+3],b[o+4],b[o+5],b[o+6],b[o+7]]) }
 
-          fn bases() -> Vec<usize> {
-              let mut v = Vec::new();
-              if let Ok(maps) = std::fs::read_to_string("/proc/self/maps") {
-                  for line in maps.lines() {
-                      if line.contains("libil2cpp.so") {
-                          if let Some(rng) = line.split_whitespace().next() {
-                              if let Some(s) = rng.split('-').next() {
-                                  if let Ok(a) = usize::from_str_radix(s, 16) { if !v.contains(&a) { v.push(a); } }
-                              }
+          fn il2cpp_base() -> Option<usize> {
+              let maps = std::fs::read_to_string("/proc/self/maps").ok()?;
+              let mut base = usize::MAX;
+              for line in maps.lines() {
+                  if line.contains("libil2cpp.so") {
+                      if let Some(rng) = line.split_whitespace().next() {
+                          if let Some(s) = rng.split('-').next() {
+                              if let Ok(a) = usize::from_str_radix(s, 16) { if a < base { base = a; } }
                           }
                       }
                   }
               }
-              v.sort();
-              v
+              if base == usize::MAX { None } else { Some(base) }
           }
 
-          fn parse(f: &std::fs::File, base: usize) -> Option<(HashMap<String, usize>, u64, u64, usize, usize)> {
+          fn build_cache() -> HashMap<String, usize> {
+              let mut out = HashMap::new();
+              let Some(base) = il2cpp_base() else { return out };
+              let Ok(f) = std::fs::File::open("/proc/self/mem") else { return out };
+              let adj = |v: u64| -> u64 { if v != 0 && (v as usize) < base { (base + v as usize) as u64 } else { v } };
+
               let mut hdr = [0u8; 64];
-              f.read_exact_at(&mut hdr, base as u64).ok()?;
-              if &hdr[0..4] != b"\x7fELF" { return None; }
+              if f.read_exact_at(&mut hdr, base as u64).is_err() { return out; }
+              if &hdr[0..4] != b"\x7fELF" { return out; }
               let phoff = u64le(&hdr, 0x20) as usize;
               let phentsize = u16le(&hdr, 0x36) as usize;
               let phnum = u16le(&hdr, 0x38) as usize;
-              log::info!("symbols: base={:#x} phoff={} phnum={} phent={}", base, phoff, phnum, phentsize);
               let mut dyn_v: usize = 0;
               for i in 0..phnum {
                   let mut ph = [0u8; 56];
                   if f.read_exact_at(&mut ph, (base + phoff + i * phentsize) as u64).is_err() { break; }
-                  let pt = u32le(&ph, 0);
-                  if pt == PT_DYNAMIC { dyn_v = u64le(&ph, 0x10) as usize; }
+                  if u32le(&ph, 0) == PT_DYNAMIC { dyn_v = u64le(&ph, 0x10) as usize; }
               }
-              log::info!("symbols: dyn_v={:#x}", dyn_v);
-              if dyn_v == 0 { return None; }
+              if dyn_v == 0 { return out; }
               let mut symtab: u64 = 0; let mut strtab: u64 = 0; let mut hash: u64 = 0;
-              let mut shown = 0;
               for i in 0..512 {
                   let mut d = [0u8; 16];
                   if f.read_exact_at(&mut d, (base + dyn_v + i * 16) as u64).is_err() { break; }
                   let tag = u64le(&d, 0); let val = u64le(&d, 8);
-                  if shown < 8 { log::info!("symbols: DT[{}] tag={:#x} val={:#x}", i, tag, val); shown += 1; }
                   if tag == 0 { break; }
                   match tag { DT_SYMTAB => symtab = val, DT_STRTAB => strtab = val, DT_HASH => hash = val, _ => {} }
               }
-              log::info!("symbols: symtab={:#x} strtab={:#x} hash={:#x}", symtab, strtab, hash);
-              if symtab == 0 || strtab == 0 { return None; }
+              if symtab == 0 || strtab == 0 { log::warn!("symbols: no sym/str"); return out; }
+              let symtab = adj(symtab); let strtab = adj(strtab); let hash = adj(hash);
+              log::info!("symbols: base={:#x} symtab={:#x} strtab={:#x} hash={:#x}", base, symtab, strtab, hash);
+
               let mut count: usize = 0;
               if hash != 0 {
                   let mut hb = [0u8; 8];
@@ -97,7 +97,6 @@ jobs:
               if count == 0 || count > 500000 {
                   count = if strtab > symtab { ((strtab - symtab) / 24) as usize } else { 20000 };
               }
-              let mut map = HashMap::new();
               let mut inserted = 0usize;
               for i in 0..count {
                   let mut s = [0u8; 24];
@@ -110,23 +109,12 @@ jobs:
                   let end = nb.iter().position(|&c| c == 0).unwrap_or(nb.len());
                   if end == 0 { continue; }
                   if let Ok(nm) = std::str::from_utf8(&nb[..end]) {
-                      map.insert(nm.to_string(), base + value as usize);
+                      out.insert(nm.to_string(), base + value as usize);
                       inserted += 1;
                   }
               }
-              Some((map, symtab, strtab, count, inserted))
-          }
-
-          fn build_cache() -> HashMap<String, usize> {
-              let Ok(f) = std::fs::File::open("/proc/self/mem") else { return HashMap::new() };
-              for b in bases() {
-                  if let Some((map, _s, _t, c, n)) = parse(&f, b) {
-                      log::info!("symbols: OK base={:#x} count={} inserted={}", b, c, n);
-                      return map;
-                  }
-              }
-              log::warn!("symbols: failed");
-              HashMap::new()
+              log::info!("symbols: count={} inserted={}", count, inserted);
+              out
           }
 
           pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
@@ -208,6 +196,6 @@ jobs:
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试" || true
-            cp "$SO" "libhachimi-diag-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-diag-*.so -R "$GITHUB_REPOSITORY" --clobber || true
+            cp "$SO" "libhachimi-adj-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-adj-*.so -R "$GITHUB_REPOSITORY" --clobber || true
           fi
