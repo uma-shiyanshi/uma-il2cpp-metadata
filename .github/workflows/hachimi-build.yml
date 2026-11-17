@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# symbols_impl：解析 dynsym + 取符号前自动 il2cpp_thread_attach
+# 预热：JNI_OnLoad 时就把符号表读好（避免和游戏加载抢内核锁导致卡死）
 on:
   push:
     paths:
@@ -116,6 +116,11 @@ jobs:
               out
           }
 
+          pub fn warmup() {
+              let c = CACHE.get_or_init(build_cache);
+              log::info!("symbols: warmup done, {} entries", c.len());
+          }
+
           unsafe fn ensure_attached(cache: &HashMap<String, usize>) {
               if ATTACHED.with(|c| c.get()) { return; }
               let (Some(&dg), Some(&ta)) = (cache.get("il2cpp_domain_get"), cache.get("il2cpp_thread_attach")) else { return };
@@ -125,7 +130,7 @@ jobs:
               let dom = domain_get();
               if !dom.is_null() {
                   let th = thread_attach(dom);
-                  log::info!("symbols: attached thread dom={:#x} th={:#x}", dom as usize, th as usize);
+                  log::info!("symbols: attached dom={:#x} th={:#x}", dom as usize, th as usize);
                   ATTACHED.with(|c| c.set(true));
               }
           }
@@ -170,6 +175,9 @@ jobs:
                   '    if Hachimi::instance().config.load().late_load {\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
                   '            std::thread::spawn(|| {\n'
+                  '                std::thread::sleep(std::time::Duration::from_millis(1500));\n'
+                  '                // 预热：此时游戏刚起，读符号表不易与加载竞争\n'
+                  '                crate::symbols_impl::warmup();\n'
                   '                let mut done = false;\n'
                   '                for _ in 0..360 {\n'
                   '                    std::thread::sleep(std::time::Duration::from_millis(500));\n'
@@ -203,13 +211,13 @@ jobs:
           export CXXSTDLIB="c++_static"
           export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
           cd "$GITHUB_WORKSPACE/hz"
-          cargo build --release --target aarch64-linux-android 2>&1 | tail -5
+          cargo build --release --target aarch64-linux-android 2>&1 | tail -8
       - name: publish
         if: always()
         run: |
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试" || true
-            cp "$SO" "libhachimi-attach2-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-attach2-*.so -R "$GITHUB_REPOSITORY" --clobber || true
+            cp "$SO" "libhachimi-warm-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-warm-*.so -R "$GITHUB_REPOSITORY" --clobber || true
           fi
