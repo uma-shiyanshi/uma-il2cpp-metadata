@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 精简版：取 tools/meta_patch.sh 应用补丁 → 交叉编译 → 上传 release（带详细输出）
+# 取 tools/meta_patch.sh 应用补丁 → 编译 → 上传；全过程日志写进仓库便于排查
 on:
   push:
     paths:
@@ -19,20 +19,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: rust
+      - name: all
         run: |
+          LOG=build-log.txt
+          : > "$LOG"
+          exec >> "$LOG" 2>&1
+          set -x
+
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
-          . "$HOME/.cargo/env"; rustup target add aarch64-linux-android
-
-      - name: clone hachimi
-        run: git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
-
-      - name: apply patch
-        run: bash tools/meta_patch.sh hz
-
-      - name: build
-        run: |
           . "$HOME/.cargo/env"
+          rustup target add aarch64-linux-android
+
+          git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
+          bash tools/meta_patch.sh hz
+
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CC_aarch64_linux_android="$TC/aarch64-linux-android26-clang"
@@ -41,20 +41,28 @@ jobs:
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
           export CXXSTDLIB="c++_static"
           export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
+
           cd hz
-          cargo build --release --target aarch64-linux-android 2>&1 | tail -15
-          ls -l target/aarch64-linux-android/release/libhachimi.so
+          cargo build --release --target aarch64-linux-android
+          SO=target/aarch64-linux-android/release/libhachimi.so
+          ls -l "$SO"
+          cp "$SO" ../libhachimi-meta.so
+          sha256sum ../libhachimi-meta.so
 
       - name: publish
         if: always()
         run: |
-          SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
-          [ -f "$SO" ] || { echo "no so"; exit 0; }
-          NAME="libhachimi-meta-$(date -u +%m%d-%H%M).so"
-          cp "$SO" "$NAME"
-          echo "== release list =="
-          gh release view builds -R "$GITHUB_REPOSITORY" --json tagName -q .tagName || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
-          echo "== upload $NAME =="
-          gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
-          echo "== after upload =="
-          gh release view builds -R "$GITHUB_REPOSITORY" --json assets -q '.assets[].name' | tail -5
+          cd "$GITHUB_WORKSPACE"
+          [ -f libhachimi-meta.so ] && {
+            NAME="libhachimi-meta-$(date -u +%m%d-%H%M).so"
+            cp libhachimi-meta.so "$NAME"
+            gh release view builds -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
+            gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
+          }
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          { echo "run: $GITHUB_RUN_ID"; tail -n 60 build-log.txt; } > hachimi-build-status.txt
+          git add -f build-log.txt hachimi-build-status.txt || true
+          git commit -m "ci: build log ($GITHUB_RUN_ID)" || true
+          git pull --rebase --autostash || true
+          git push || true
