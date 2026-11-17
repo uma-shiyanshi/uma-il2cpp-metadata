@@ -1,6 +1,6 @@
 name: blackbox-build
 
-# 晚加载 v7：加载 Hachimi 前先 System.loadLibrary("tprt")/"tersafe2"，满足 libil2cpp 的 DT_NEEDED
+# 晚加载 v8：用游戏自己的 ClassLoader 反射 loadLibrary0 装载 Hachimi（同一 linker 命名空间）
 on:
   push:
     paths:
@@ -125,23 +125,21 @@ jobs:
             "                        android.util.Log.i(\"BB_INJECT\", \"cfg written len=\" + __cfgDst.length());\n"
             "                    }\n"
             "                } catch (Throwable __ce) { android.util.Log.e(\"BB_INJECT\", \"cfg failed\", __ce); }\n"
-            "                final java.io.File __hFinal = __h;\n"
+            "                final ClassLoader __gameCl = packageContext.getClassLoader();\n"
             "                new Thread(new Runnable() { public void run() {\n"
             "                    try {\n"
-            "                        try { System.loadLibrary(\"tprt\"); android.util.Log.i(\"BB_INJECT\", \"tprt preloaded\"); }\n"
-            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tprt preload failed\", __e); }\n"
-            "                        try { System.loadLibrary(\"tersafe2\"); android.util.Log.i(\"BB_INJECT\", \"tersafe2 preloaded\"); }\n"
-            "                        catch (Throwable __e) { android.util.Log.e(\"BB_INJECT\", \"tersafe2 preload failed\", __e); }\n"
             "                        Thread.sleep(8000);\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"late loading (main only)\");\n"
-            "                        System.load(__hFinal.getAbsolutePath());\n"
-            "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded (late)\");\n"
-            "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"late load failed\", __t); }\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"late load via game ClassLoader: \" + __gameCl);\n"
+            "                        java.lang.reflect.Method __m = java.lang.Runtime.class.getDeclaredMethod(\"loadLibrary0\", ClassLoader.class, String.class);\n"
+            "                        __m.setAccessible(true);\n"
+            "                        __m.invoke(java.lang.Runtime.getRuntime(), __gameCl, \"hachimi\");\n"
+            "                        android.util.Log.i(\"BB_INJECT\", \"hachimi loaded via game CL\");\n"
+            "                    } catch (Throwable __t) { android.util.Log.e(\"BB_INJECT\", \"game CL load failed\", __t); }\n"
             "                } }).start();\n"
             "            } catch (Throwable t) { android.util.Log.e(\"BB_INJECT\", \"prep failed\", t); }\n"
             "        }\n")
           if anchor3 in b and "BB_INJECT" not in b:
-              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK tprt preload")
+              bt.write_text(b.replace(anchor3, redirect + anchor3, 1), encoding="utf-8"); print("OK game CL load")
           PY
       - name: 编译
         run: |
@@ -159,8 +157,8 @@ jobs:
           if [ -n "$APK" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$APK" "bb-tprt-$(date -u +%m%d-%H%M).apk"
-            gh release upload builds bb-tprt-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$APK" "bb-gamecl-$(date -u +%m%d-%H%M).apk"
+            gh release upload builds bb-gamecl-*.apk -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > blackbox-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
