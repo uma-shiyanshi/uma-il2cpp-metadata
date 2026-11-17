@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# v2 触发重建：ELF 解析版（symbols_impl 自己解析 dynsym，不依赖 dlopen）
+# ELF 解析版（symbols_impl 自解析 dynsym），Rust 源码用 heredoc 写入并去缩进
 on:
   push:
     paths:
@@ -27,13 +27,93 @@ jobs:
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
+      - name: 写 symbols_impl（自解析 ELF）
+        run: |
+          cat > /tmp/sym.rs <<'RSEOF'
+          use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
+          use std::fs;
+
+          static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
+
+          fn read_u16(b: &[u8], o: usize) -> u16 { u16::from_le_bytes([b[o], b[o + 1]]) }
+          fn read_u32(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]) }
+          fn read_u64(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4], b[o + 5], b[o + 6], b[o + 7]]) }
+
+          fn il2cpp_base_and_path() -> Option<(usize, String)> {
+              let maps = fs::read_to_string("/proc/self/maps").ok()?;
+              let mut base = usize::MAX;
+              let mut path = String::new();
+              for line in maps.lines() {
+                  if let Some(i) = line.find('/') {
+                      let p = line[i..].trim_end_matches(" (deleted)").trim();
+                      if p.ends_with("libil2cpp.so") {
+                          if let Some(rng) = line.split_whitespace().next() {
+                              if let Some(s) = rng.split('-').next() {
+                                  if let Ok(a) = usize::from_str_radix(s, 16) {
+                                      if a < base { base = a; path = p.to_string(); }
+                                  }
+                              }
+                          }
+                      }
+                  }
+              }
+              if base == usize::MAX || path.is_empty() { None } else { Some((base, path)) }
+          }
+
+          fn build_cache() -> HashMap<String, usize> {
+              let mut map = HashMap::new();
+              let Some((base, path)) = il2cpp_base_and_path() else { return map };
+              let Ok(data) = fs::read(&path) else { return map };
+              if data.len() < 64 || &data[0..4] != b"\x7fELF" || data[4] != 2 { return map; }
+              let shoff = read_u64(&data, 0x28) as usize;
+              let shentsize = read_u16(&data, 0x3a) as usize;
+              let shnum = read_u16(&data, 0x3c) as usize;
+              if shoff == 0 || shnum == 0 { return map; }
+              let mut sections = Vec::new();
+              for i in 0..shnum {
+                  let o = shoff + i * shentsize;
+                  if o + 64 > data.len() { break; }
+                  sections.push((read_u32(&data, o + 4), read_u64(&data, o + 0x18) as usize,
+                                 read_u64(&data, o + 0x20) as usize, read_u32(&data, o + 0x28) as usize));
+              }
+              let dynsym = sections.iter().find(|s| s.0 == 11).cloned();
+              let Some((_, symoff, symsize, link)) = dynsym else { return map };
+              let Some(&(_, stroff, strsize, _)) = sections.get(link) else { return map };
+              let count = symsize / 24;
+              for i in 0..count {
+                  let o = symoff + i * 24;
+                  if o + 24 > data.len() { break; }
+                  let name_off = read_u32(&data, o) as usize;
+                  let value = read_u64(&data, o + 8) as usize;
+                  if value == 0 || name_off >= strsize { continue; }
+                  let s = stroff + name_off;
+                  if s >= data.len() { continue; }
+                  let mut e = s;
+                  while e < data.len() && data[e] != 0 { e += 1; }
+                  if let Ok(name) = std::str::from_utf8(&data[s..e]) {
+                      if !name.is_empty() { map.insert(name.to_string(), base + value); }
+                  }
+              }
+              map
+          }
+
+          pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
+              let cache = CACHE.get_or_init(build_cache);
+              if let Some(&addr) = cache.get(name) { return addr; }
+              if handle.is_null() || handle as usize == 1 { return 0; }
+              let Ok(c) = std::ffi::CString::new(name) else { return 0 };
+              libc::dlsym(handle, c.as_ptr()) as usize
+          }
+          RSEOF
+          sed -i 's/^          //' /tmp/sym.rs
+          cp /tmp/sym.rs "$GITHUB_WORKSPACE/hz/src/android/symbols_impl.rs"
+          head -3 "$GITHUB_WORKSPACE/hz/src/android/symbols_impl.rs"
       - name: 打补丁
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           python3 - "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1 <<'PY'
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
-
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "poll_il2cpp" not in t:
@@ -42,7 +122,6 @@ jobs:
                                     "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,"
                                     "\n    #[serde(default)]\n    pub poll_il2cpp: bool,"), 1)
               cfg.write_text(t, encoding="utf-8")
-
           hk = root / "src/android/hook.rs"
           h = hk.read_text(encoding="utf-8")
           old = ('    info!("Hooking {} at {:#x}", dlopen_name, dlopen_orig);\n'
@@ -54,84 +133,6 @@ jobs:
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
           hk.write_text(h.replace(old, new, 1), encoding="utf-8")
-
-          sym = root / "src/android/symbols_impl.rs"
-          sym.write_text(r'''use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
-use std::fs;
-
-static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
-
-fn read_u16(b: &[u8], o: usize) -> u16 { u16::from_le_bytes([b[o], b[o+1]]) }
-fn read_u32(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o+1], b[o+2], b[o+3]]) }
-fn read_u64(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o],b[o+1],b[o+2],b[o+3],b[o+4],b[o+5],b[o+6],b[o+7]]) }
-
-fn il2cpp_base_and_path() -> Option<(usize, String)> {
-    let maps = fs::read_to_string("/proc/self/maps").ok()?;
-    let mut base = usize::MAX;
-    let mut path = String::new();
-    for line in maps.lines() {
-        if let Some(i) = line.find('/') {
-            let p = line[i..].trim_end_matches(" (deleted)").trim();
-            if p.ends_with("libil2cpp.so") {
-                if let Some(rng) = line.split_whitespace().next() {
-                    if let Some(s) = rng.split('-').next() {
-                        if let Ok(a) = usize::from_str_radix(s, 16) {
-                            if a < base { base = a; path = p.to_string(); }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    if base == usize::MAX || path.is_empty() { None } else { Some((base, path)) }
-}
-
-fn build_cache() -> HashMap<String, usize> {
-    let mut map = HashMap::new();
-    let Some((base, path)) = il2cpp_base_and_path() else { return map };
-    let Ok(data) = fs::read(&path) else { return map };
-    if data.len() < 64 || &data[0..4] != b"\x7fELF" || data[4] != 2 { return map; }
-    let shoff = read_u64(&data, 0x28) as usize;
-    let shentsize = read_u16(&data, 0x3a) as usize;
-    let shnum = read_u16(&data, 0x3c) as usize;
-    if shoff == 0 || shnum == 0 { return map; }
-    let mut sections = Vec::new();
-    for i in 0..shnum {
-        let o = shoff + i * shentsize;
-        if o + 64 > data.len() { break; }
-        sections.push((read_u32(&data, o + 4), read_u64(&data, o + 0x18) as usize,
-                       read_u64(&data, o + 0x20) as usize, read_u32(&data, o + 0x28) as usize));
-    }
-    let dynsym = sections.iter().find(|s| s.0 == 11).cloned();
-    let Some((_, symoff, symsize, link)) = dynsym else { return map };
-    let Some(&(_, stroff, strsize, _)) = sections.get(link) else { return map };
-    let count = symsize / 24;
-    for i in 0..count {
-        let o = symoff + i * 24;
-        if o + 24 > data.len() { break; }
-        let name_off = read_u32(&data, o) as usize;
-        let value = read_u64(&data, o + 8) as usize;
-        if value == 0 || name_off >= strsize { continue; }
-        let s = stroff + name_off;
-        if s >= data.len() { continue; }
-        let mut e = s;
-        while e < data.len() && data[e] != 0 { e += 1; }
-        if let Ok(name) = std::str::from_utf8(&data[s..e]) {
-            if !name.is_empty() { map.insert(name.to_string(), base + value); }
-        }
-    }
-    map
-}
-
-pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
-    let cache = CACHE.get_or_init(build_cache);
-    if let Some(&addr) = cache.get(name) { return addr; }
-    if handle.is_null() || handle as usize == 1 { return 0; }
-    let Ok(c) = std::ffi::CString::new(name) else { return 0 };
-    libc::dlsym(handle, c.as_ptr()) as usize
-}
-''', encoding="utf-8")
-
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
           old2 = ('    info!("JNI_OnLoad");\n'
@@ -166,9 +167,9 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
                   '    orig_fn(vm, reserved)\n')
           assert old2 in m
           mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
-          print("OK patches applied")
+          print("OK patches")
           PY
-      - name: 交叉编译（静态 libc++）
+      - name: 交叉编译
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           . "$HOME/.cargo/env"
@@ -193,15 +194,12 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-elf2-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-elf2-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
-            echo "uploaded" >> "$LOG"
-          else
-            echo "no so" >> "$LOG"
+            cp "$SO" "libhachimi-elf4-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-elf4-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1 || true
           fi
-          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
+          { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
           git add hachimi-build-status.txt || true
           git commit -m "ci: hachimi ($GITHUB_RUN_ID)" || echo "no change"
           git pull --rebase --autostash >> /dev/null 2>&1 || true
-          git push || { sleep 5; git pull --rebase --autostash >> /dev/null 2>&1 || true; git push; } || true
+          git push || true
