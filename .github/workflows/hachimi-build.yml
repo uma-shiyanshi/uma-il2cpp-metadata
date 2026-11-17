@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 预热：JNI_OnLoad 时就把符号表读好（避免和游戏加载抢内核锁导致卡死）
+# 预热改为循环重试：libil2cpp 加载后再读符号表；运行时取不到会自动重试
 on:
   push:
     paths:
@@ -34,6 +34,7 @@ jobs:
           use std::os::unix::fs::FileExt;
 
           static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
+          static EMPTY: OnceLock<HashMap<String, usize>> = OnceLock::new();
           thread_local! { static ATTACHED: std::cell::Cell<bool> = std::cell::Cell::new(false); }
 
           const DT_HASH: u64 = 4;
@@ -112,18 +113,34 @@ jobs:
                       n += 1;
                   }
               }
-              log::info!("symbols: base={:#x} inserted={}", base, n);
+              if n > 0 { log::info!("symbols: base={:#x} inserted={}", base, n); }
               out
           }
 
-          pub fn warmup() {
-              let c = CACHE.get_or_init(build_cache);
-              log::info!("symbols: warmup done, {} entries", c.len());
+          fn cache() -> &'static HashMap<String, usize> {
+              if let Some(c) = CACHE.get() { return c; }
+              let m = build_cache();
+              if !m.is_empty() { let _ = CACHE.set(m); }
+              CACHE.get().unwrap_or_else(|| EMPTY.get_or_init(HashMap::new))
           }
 
-          unsafe fn ensure_attached(cache: &HashMap<String, usize>) {
-              if ATTACHED.with(|c| c.get()) { return; }
-              let (Some(&dg), Some(&ta)) = (cache.get("il2cpp_domain_get"), cache.get("il2cpp_thread_attach")) else { return };
+          pub fn warmup() {
+              for i in 0..120 {
+                  let m = build_cache();
+                  if !m.is_empty() {
+                      let n = m.len();
+                      let _ = CACHE.set(m);
+                      log::info!("symbols: warmup done {} entries (try {})", n, i);
+                      return;
+                  }
+                  std::thread::sleep(std::time::Duration::from_millis(500));
+              }
+              log::warn!("symbols: warmup gave up");
+          }
+
+          unsafe fn ensure_attached(c: &HashMap<String, usize>) {
+              if ATTACHED.with(|x| x.get()) { return; }
+              let (Some(&dg), Some(&ta)) = (c.get("il2cpp_domain_get"), c.get("il2cpp_thread_attach")) else { return };
               if dg == 0 || ta == 0 { return; }
               let domain_get: extern "C" fn() -> *mut c_void = std::mem::transmute(dg);
               let thread_attach: extern "C" fn(*mut c_void) -> *mut c_void = std::mem::transmute(ta);
@@ -131,17 +148,17 @@ jobs:
               if !dom.is_null() {
                   let th = thread_attach(dom);
                   log::info!("symbols: attached dom={:#x} th={:#x}", dom as usize, th as usize);
-                  ATTACHED.with(|c| c.set(true));
+                  ATTACHED.with(|x| x.set(true));
               }
           }
 
           pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
-              let cache = CACHE.get_or_init(build_cache);
-              ensure_attached(cache);
-              if let Some(&addr) = cache.get(name) { return addr; }
+              let c = cache();
+              ensure_attached(c);
+              if let Some(&addr) = c.get(name) { return addr; }
               if handle.is_null() || handle as usize == 1 { return 0; }
-              let Ok(c) = std::ffi::CString::new(name) else { return 0 };
-              libc::dlsym(handle, c.as_ptr()) as usize
+              let Ok(cs) = std::ffi::CString::new(name) else { return 0 };
+              libc::dlsym(handle, cs.as_ptr()) as usize
           }
           RSEOF
           sed -i 's/^          //' /tmp/sym.rs
@@ -175,8 +192,6 @@ jobs:
                   '    if Hachimi::instance().config.load().late_load {\n'
                   '        if Hachimi::instance().config.load().poll_il2cpp {\n'
                   '            std::thread::spawn(|| {\n'
-                  '                std::thread::sleep(std::time::Duration::from_millis(1500));\n'
-                  '                // 预热：此时游戏刚起，读符号表不易与加载竞争\n'
                   '                crate::symbols_impl::warmup();\n'
                   '                let mut done = false;\n'
                   '                for _ in 0..360 {\n'
@@ -218,6 +233,6 @@ jobs:
           SO="$GITHUB_WORKSPACE/hz/target/aarch64-linux-android/release/libhachimi.so"
           if [ -f "$SO" ]; then
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试" || true
-            cp "$SO" "libhachimi-warm-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-warm-*.so -R "$GITHUB_REPOSITORY" --clobber || true
+            cp "$SO" "libhachimi-warm2-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-warm2-*.so -R "$GITHUB_REPOSITORY" --clobber || true
           fi
