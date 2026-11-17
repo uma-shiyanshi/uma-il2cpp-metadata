@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 彻底绕开 dlopen：symbols_impl::dlsym 改为自己解析 libil2cpp 的 ELF（maps 基址 + dynsym）
+# v2 触发重建：ELF 解析版（symbols_impl 自己解析 dynsym，不依赖 dlopen）
 on:
   push:
     paths:
@@ -34,7 +34,6 @@ jobs:
           import sys, pathlib
           root = pathlib.Path(sys.argv[1])
 
-          # 1) 配置项 + hook 开关
           cfg = root / "src/core/hachimi.rs"
           t = cfg.read_text(encoding="utf-8")
           if "poll_il2cpp" not in t:
@@ -42,7 +41,7 @@ jobs:
               t = t.replace(a, a + ("\n    #[serde(default)]\n    pub late_load: bool,"
                                     "\n    #[serde(default)]\n    pub disable_dlopen_hook: bool,"
                                     "\n    #[serde(default)]\n    pub poll_il2cpp: bool,"), 1)
-              cfg.write_text(t, encoding="utf-8"); print("OK Config")
+              cfg.write_text(t, encoding="utf-8")
 
           hk = root / "src/android/hook.rs"
           h = hk.read_text(encoding="utf-8")
@@ -54,12 +53,10 @@ jobs:
                  '    } else {\n'
                  '        info!("dlopen hook disabled by config");\n'
                  '    }')
-          hk.write_text(h.replace(old, new, 1), encoding="utf-8"); print("OK hook.rs")
+          hk.write_text(h.replace(old, new, 1), encoding="utf-8")
 
-          # 2) 自研符号解析
           sym = root / "src/android/symbols_impl.rs"
           sym.write_text(r'''use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
-
 use std::fs;
 
 static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
@@ -98,25 +95,16 @@ fn build_cache() -> HashMap<String, usize> {
     let shentsize = read_u16(&data, 0x3a) as usize;
     let shnum = read_u16(&data, 0x3c) as usize;
     if shoff == 0 || shnum == 0 { return map; }
-    let mut dynsym = None;
-    let mut dynstr = None;
     let mut sections = Vec::new();
     for i in 0..shnum {
         let o = shoff + i * shentsize;
         if o + 64 > data.len() { break; }
-        let stype = read_u32(&data, o + 4);
-        let off = read_u64(&data, o + 0x18) as usize;
-        let size = read_u64(&data, o + 0x20) as usize;
-        let link = read_u32(&data, o + 0x28) as usize;
-        sections.push((stype, off, size, link));
+        sections.push((read_u32(&data, o + 4), read_u64(&data, o + 0x18) as usize,
+                       read_u64(&data, o + 0x20) as usize, read_u32(&data, o + 0x28) as usize));
     }
-    for &(stype, off, size, _link) in &sections {
-        if stype == 11 { dynsym = Some((off, size)); }
-    }
-    if let Some((_, _, _, link)) = sections.iter().find(|s| s.0 == 11) {
-        if let Some(&(_, soff, ssize, _)) = sections.get(*link) { dynstr = Some((soff, ssize)); }
-    }
-    let (Some((symoff, symsize)), Some((stroff, strsize))) = (dynsym, dynstr) else { return map };
+    let dynsym = sections.iter().find(|s| s.0 == 11).cloned();
+    let Some((_, symoff, symsize, link)) = dynsym else { return map };
+    let Some(&(_, stroff, strsize, _)) = sections.get(link) else { return map };
     let count = symsize / 24;
     for i in 0..count {
         let o = symoff + i * 24;
@@ -143,9 +131,7 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
     libc::dlsym(handle, c.as_ptr()) as usize
 }
 ''', encoding="utf-8")
-          print("OK symbols_impl (ELF 解析)")
 
-          # 3) 轮询：直接给假句柄（非 null 且不等于 1 会被当作真句柄）
           mn = root / "src/android/main.rs"
           m = mn.read_text(encoding="utf-8")
           old2 = ('    info!("JNI_OnLoad");\n'
@@ -162,7 +148,7 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
                   '                    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();\n'
                   '                    let hit = maps.lines().any(|l| l.contains("libil2cpp.so"));\n'
                   '                    if hit && !done {\n'
-                  '                        info!("poll: il2cpp present, using ELF resolver");\n'
+                  '                        info!("poll: il2cpp present, ELF resolver");\n'
                   '                        hachimi.on_dlopen("libil2cpp.so", 1);\n'
                   '                        done = true;\n'
                   '                        for _ in 0..6 { std::thread::sleep(std::time::Duration::from_millis(500)); }\n'
@@ -178,8 +164,9 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
                   '        return jni::sys::JNI_VERSION_1_6;\n'
                   '    }\n'
                   '    orig_fn(vm, reserved)\n')
-          assert old2 in m, "main.rs 锚点未命中"
-          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8"); print("OK poll (ELF resolver)")
+          assert old2 in m
+          mn.write_text(m.replace(old2, new2, 1), encoding="utf-8")
+          print("OK patches applied")
           PY
       - name: 交叉编译（静态 libc++）
         run: |
@@ -206,8 +193,11 @@ pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-elf-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-elf-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            cp "$SO" "libhachimi-elf2-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-elf2-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1
+            echo "uploaded" >> "$LOG"
+          else
+            echo "no so" >> "$LOG"
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 50 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
