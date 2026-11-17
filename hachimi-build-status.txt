@@ -1,4 +1,4 @@
-run: 44010576779 2026-11-17T03:31:44Z
+run: 44011309881 2026-11-17T03:37:52Z
     |
 192 |     get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event)
     |     ---------------------------------------------------- in this macro invocation
@@ -35,7 +35,7 @@ help: first cast to a pointer `as *const ()`
     |                                                                                                     ++++++++++++
 
 warning: `hachimi` (lib) generated 185 warnings (run `cargo fix --lib -p hachimi` to apply 154 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 51s
+    Finished `release` profile [optimized] target(s) in 1m 49s
 cargo exit=0
--rwxr-xr-x 2 runner runner 14846432 Nov 17 03:31 target/aarch64-linux-android/release/libhachimi.so
-sha256: 105e51e8bd4ccf2d19ba41455c7c4dd2285ce5e931cc04e18f6fc06b66130b54
+-rwxr-xr-x 2 runner runner 14845952 Nov 17 03:37 target/aarch64-linux-android/release/libhachimi.so
+sha256: 9caef6f3b314e01a60004932ad636f693cb516ce4fcbffb8b06d622568ab165a
