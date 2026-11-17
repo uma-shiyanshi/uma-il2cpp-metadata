@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# ELF 解析版（symbols_impl 自解析 dynsym），Rust 源码用 heredoc 写入并去缩进
+# 符号解析 v2：从运行时内存取（dl_iterate_phdr + PT_DYNAMIC + dynsym），磁盘上的是加密的
 on:
   push:
     paths:
@@ -27,74 +27,85 @@ jobs:
         run: |
           LOG="$GITHUB_WORKSPACE/h.log"
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git "$GITHUB_WORKSPACE/hz" >> "$LOG" 2>&1
-      - name: 写 symbols_impl（自解析 ELF）
+      - name: 写 symbols_impl（内存解析）
         run: |
           cat > /tmp/sym.rs <<'RSEOF'
-          use std::{collections::HashMap, ffi::c_void, sync::OnceLock};
-          use std::fs;
+          use std::{collections::HashMap, ffi::c_void, os::raw::{c_char, c_int}, sync::OnceLock};
 
           static CACHE: OnceLock<HashMap<String, usize>> = OnceLock::new();
 
-          fn read_u16(b: &[u8], o: usize) -> u16 { u16::from_le_bytes([b[o], b[o + 1]]) }
-          fn read_u32(b: &[u8], o: usize) -> u32 { u32::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3]]) }
-          fn read_u64(b: &[u8], o: usize) -> u64 { u64::from_le_bytes([b[o], b[o + 1], b[o + 2], b[o + 3], b[o + 4], b[o + 5], b[o + 6], b[o + 7]]) }
+          #[repr(C)]
+          struct Elf64Sym { st_name: u32, st_info: u8, st_other: u8, st_shndx: u16, st_value: u64, st_size: u64 }
 
-          fn il2cpp_base_and_path() -> Option<(usize, String)> {
-              let maps = fs::read_to_string("/proc/self/maps").ok()?;
-              let mut base = usize::MAX;
-              let mut path = String::new();
-              for line in maps.lines() {
-                  if let Some(i) = line.find('/') {
-                      let p = line[i..].trim_end_matches(" (deleted)").trim();
-                      if p.ends_with("libil2cpp.so") {
-                          if let Some(rng) = line.split_whitespace().next() {
-                              if let Some(s) = rng.split('-').next() {
-                                  if let Ok(a) = usize::from_str_radix(s, 16) {
-                                      if a < base { base = a; path = p.to_string(); }
-                                  }
-                              }
-                          }
-                      }
+          struct Ctx { map: HashMap<String, usize>, found: bool }
+
+          unsafe extern "C" fn phdr_cb(info: *mut libc::dl_phdr_info, _sz: usize, data: *mut c_void) -> c_int {
+              let info = &*info;
+              let name = std::ffi::CStr::from_ptr(info.dlpi_name).to_string_lossy().to_string();
+              if !name.ends_with("libil2cpp.so") { return 0; }
+              let ctx = &mut *(data as *mut Ctx);
+              let base = info.dlpi_addr as usize;
+
+              let mut dynp: usize = 0;
+              for i in 0..info.dlpi_phnum {
+                  let ph = &*info.dlpi_phdr.add(i as usize);
+                  if ph.p_type == libc::PT_DYNAMIC {
+                      dynp = base + ph.p_vaddr as usize;
                   }
               }
-              if base == usize::MAX || path.is_empty() { None } else { Some((base, path)) }
+              if dynp == 0 { return 1; }
+
+              let mut symtab: usize = 0; let mut strtab: usize = 0; let mut hash: usize = 0;
+              let mut gnuhash: usize = 0; let mut strsz: usize = 0;
+              let mut p = dynp as *const usize;
+              loop {
+                  let tag = *p; let val = *p.add(1);
+                  if tag == 0 { break; }
+                  match tag as i64 {
+                      libc::DT_SYMTAB => symtab = val,
+                      libc::DT_STRTAB => strtab = val,
+                      libc::DT_HASH => hash = val,
+                      libc::DT_GNU_HASH => gnuhash = val,
+                      libc::DT_STRSZ => strsz = val,
+                      _ => {}
+                  }
+                  p = p.add(2);
+              }
+              if symtab == 0 || strtab == 0 { return 1; }
+
+              let mut count: usize = 0;
+              if hash != 0 {
+                  count = *((hash + 4) as *const u32) as usize;
+              } else if strtab > symtab {
+                  count = (strtab - symtab) / 24;
+              } else if gnuhash != 0 {
+                  count = 20000;
+              }
+              if count == 0 || count > 500000 { count = 20000; }
+
+              let mut inserted = 0usize;
+              for i in 0..count {
+                  let s = &*((symtab as *const Elf64Sym).add(i));
+                  if s.st_value == 0 { continue; }
+                  if s.st_name as usize >= strsz.max(1) && strsz != 0 { continue; }
+                  let np = (strtab + s.st_name as usize) as *const c_char;
+                  let nm = std::ffi::CStr::from_ptr(np).to_string_lossy().to_string();
+                  if nm.is_empty() { continue; }
+                  ctx.map.insert(nm, base + s.st_value as usize);
+                  inserted += 1;
+              }
+              ctx.found = true;
+              log::info!("symbols: libil2cpp base={:#x} syms={} (hash={} gnuhash={})", base, inserted, hash, gnuhash);
+              1
           }
 
           fn build_cache() -> HashMap<String, usize> {
-              let mut map = HashMap::new();
-              let Some((base, path)) = il2cpp_base_and_path() else { return map };
-              let Ok(data) = fs::read(&path) else { return map };
-              if data.len() < 64 || &data[0..4] != b"\x7fELF" || data[4] != 2 { return map; }
-              let shoff = read_u64(&data, 0x28) as usize;
-              let shentsize = read_u16(&data, 0x3a) as usize;
-              let shnum = read_u16(&data, 0x3c) as usize;
-              if shoff == 0 || shnum == 0 { return map; }
-              let mut sections = Vec::new();
-              for i in 0..shnum {
-                  let o = shoff + i * shentsize;
-                  if o + 64 > data.len() { break; }
-                  sections.push((read_u32(&data, o + 4), read_u64(&data, o + 0x18) as usize,
-                                 read_u64(&data, o + 0x20) as usize, read_u32(&data, o + 0x28) as usize));
+              let mut ctx = Ctx { map: HashMap::new(), found: false };
+              unsafe {
+                  libc::dl_iterate_phdr(Some(phdr_cb), &mut ctx as *mut Ctx as *mut c_void);
               }
-              let dynsym = sections.iter().find(|s| s.0 == 11).cloned();
-              let Some((_, symoff, symsize, link)) = dynsym else { return map };
-              let Some(&(_, stroff, strsize, _)) = sections.get(link) else { return map };
-              let count = symsize / 24;
-              for i in 0..count {
-                  let o = symoff + i * 24;
-                  if o + 24 > data.len() { break; }
-                  let name_off = read_u32(&data, o) as usize;
-                  let value = read_u64(&data, o + 8) as usize;
-                  if value == 0 || name_off >= strsize { continue; }
-                  let s = stroff + name_off;
-                  if s >= data.len() { continue; }
-                  let mut e = s;
-                  while e < data.len() && data[e] != 0 { e += 1; }
-                  if let Ok(name) = std::str::from_utf8(&data[s..e]) {
-                      if !name.is_empty() { map.insert(name.to_string(), base + value); }
-                  }
-              }
-              map
+              if !ctx.found { log::warn!("symbols: libil2cpp not found in phdr"); }
+              ctx.map
           }
 
           pub unsafe fn dlsym(handle: *mut c_void, name: &str) -> usize {
@@ -149,7 +160,7 @@ jobs:
                   '                    let maps = std::fs::read_to_string("/proc/self/maps").unwrap_or_default();\n'
                   '                    let hit = maps.lines().any(|l| l.contains("libil2cpp.so"));\n'
                   '                    if hit && !done {\n'
-                  '                        info!("poll: il2cpp present, ELF resolver");\n'
+                  '                        info!("poll: il2cpp present, memory resolver");\n'
                   '                        hachimi.on_dlopen("libil2cpp.so", 1);\n'
                   '                        done = true;\n'
                   '                        for _ in 0..6 { std::thread::sleep(std::time::Duration::from_millis(500)); }\n'
@@ -194,8 +205,8 @@ jobs:
             echo "sha256: $(sha256sum "$SO" | cut -d' ' -f1)" >> "$LOG"
             gh release view builds -R "$GITHUB_REPOSITORY" > /dev/null 2>&1 || \
               gh release create builds -R "$GITHUB_REPOSITORY" --title "构建产物" --notes "测试 APK" || true
-            cp "$SO" "libhachimi-elf4-$(date -u +%m%d-%H%M).so"
-            gh release upload builds libhachimi-elf4-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1 || true
+            cp "$SO" "libhachimi-mem-$(date -u +%m%d-%H%M).so"
+            gh release upload builds libhachimi-mem-*.so -R "$GITHUB_REPOSITORY" --clobber >> "$LOG" 2>&1 || true
           fi
           { echo "run: $GITHUB_RUN_ID $(date -u +%FT%TZ)"; tail -n 40 "$LOG"; } > hachimi-build-status.txt
           git config user.name "github-actions[bot]"; git config user.email "github-actions[bot]@users.noreply.github.com"
