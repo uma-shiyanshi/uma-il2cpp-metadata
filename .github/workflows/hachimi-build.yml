@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# 取 tools/meta_patch.sh 应用补丁 → 编译 → 上传；全过程日志写进仓库便于排查
+# 取 tools/meta_patch.sh → 修正类型名 → 编译 → 上传 release；日志落盘
 on:
   push:
     paths:
@@ -32,6 +32,7 @@ jobs:
 
           git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
           bash tools/meta_patch.sh hz
+          sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
 
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
@@ -53,12 +54,12 @@ jobs:
         if: always()
         run: |
           cd "$GITHUB_WORKSPACE"
-          [ -f libhachimi-meta.so ] && {
+          if [ -f libhachimi-meta.so ]; then
             NAME="libhachimi-meta-$(date -u +%m%d-%H%M).so"
             cp libhachimi-meta.so "$NAME"
             gh release view builds -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
             gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
-          }
+          fi
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           { echo "run: $GITHUB_RUN_ID"; tail -n 60 build-log.txt; } > hachimi-build-status.txt
