@@ -1,4 +1,4 @@
-run: 44101068891
+run: 44109798165
 186 |                 return get_orig_fn!(nativeInjectEvent, NativeInjectEventFn)(env, obj, input_event);
     |                        ---------------------------------------------------- in this macro invocation
     |
@@ -51,11 +51,11 @@ help: first cast to a pointer `as *const ()`
 251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
     |                                                                                                     ++++++++++++
 
-warning: `hachimi` (lib) generated 301 warnings (run `cargo fix --lib -p hachimi` to apply 270 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 50s
+warning: `hachimi` (lib) generated 243 warnings (run `cargo fix --lib -p hachimi` to apply 212 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 46s
 + SO=target/aarch64-linux-android/release/libhachimi.so
 + ls -l target/aarch64-linux-android/release/libhachimi.so
--rwxr-xr-x 2 runner runner 14851480 Nov 17 14:17 target/aarch64-linux-android/release/libhachimi.so
+-rwxr-xr-x 2 runner runner 14842016 Nov 17 15:04 target/aarch64-linux-android/release/libhachimi.so
 + cp target/aarch64-linux-android/release/libhachimi.so ../libhachimi-meta.so
 + sha256sum ../libhachimi-meta.so
-a932901185c08c0b149d5c495928b0960ecac8f98073c2bb08bf4ab1e8c3662c  ../libhachimi-meta.so
+b0fe45ce3d1d1433863b7f5b3883e504eae8f193db8c651f11b76c07007d95e5  ../libhachimi-meta.so

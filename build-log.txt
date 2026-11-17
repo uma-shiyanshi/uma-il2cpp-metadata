@@ -68,6 +68,8 @@ Cloning into 'hz'...
 meta_patch applied
 + sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
 + sed -i 's/methodPointer = new_fn as \*mut c_void;/methodPointer = new_fn;/' hz/src/il2cpp/symbols.rs
++ python3 - hz
+meta-only patched
 ++ tail -1
 ++ ls -d /usr/local/lib/android/sdk/ndk/27.3.13750724 /usr/local/lib/android/sdk/ndk/29.0.14206865 /usr/local/lib/android/sdk/ndk/30.0.16248370
 + NDK=/usr/local/lib/android/sdk/ndk/30.0.16248370
@@ -90,162 +92,162 @@ meta_patch applied
     Updating git repository `https://github.com/nabijaczleweli/rust-embed-resource.git`
     Updating crates.io index
  Downloading crates ...
-  Downloaded memoffset v0.9.0
-  Downloaded cfg-if v1.0.0
-  Downloaded fnv v1.0.7
-  Downloaded idna v0.5.0
-  Downloaded bytes v1.5.0
+  Downloaded adler v1.0.2
+  Downloaded ab_glyph v0.2.23
+  Downloaded ab_glyph_rasterizer v0.1.8
+  Downloaded accesskit v0.12.3
   Downloaded ahash v0.8.11
-  Downloaded arc-swap v1.7.0
-  Downloaded ureq v2.10.1
-  Downloaded rustls-pki-types v1.10.0
   Downloaded rustc_version v0.4.0
-  Downloaded rust-i18n v3.1.4
-  Downloaded rustversion v1.0.20
-  Downloaded ryu v1.0.16
-  Downloaded same-file v1.0.6
+  Downloaded constant_time_eq v0.3.0
+  Downloaded rustls-pki-types v1.10.0
+  Downloaded color_quant v1.1.0
+  Downloaded serde_spanned v0.6.6
   Downloaded rust-i18n-macro v3.1.4
   Downloaded rust-i18n-support v3.1.4
-  Downloaded rustls-webpki v0.102.8
-  Downloaded android_logger v0.13.3
-  Downloaded threadpool v1.8.1
-  Downloaded aho-corasick v1.1.2
-  Downloaded android-tzdata v0.1.1
-  Downloaded ab_glyph v0.2.23
-  Downloaded tinyvec v1.6.0
-  Downloaded semver v1.0.23
-  Downloaded toml_datetime v0.6.6
-  Downloaded unicode-bidi v0.3.15
-  Downloaded rustix v0.38.31
-  Downloaded unicode-linebreak v0.1.5
-  Downloaded android_log-sys v0.3.1
-  Downloaded android_system_properties v0.1.5
-  Downloaded parking_lot v0.12.1
-  Downloaded form_urlencoded v1.2.1
-  Downloaded stable_deref_trait v1.2.0
-  Downloaded hashbrown v0.14.5
-  Downloaded indexmap v2.2.6
-  Downloaded accesskit v0.12.3
-  Downloaded arrayref v0.3.7
-  Downloaded chunked_transfer v1.5.0
-  Downloaded memchr v2.7.1
-  Downloaded once_cell v1.19.0
-  Downloaded enum-map v2.7.3
-  Downloaded fdeflate v0.3.4
-  Downloaded arrayvec v0.7.4
-  Downloaded color_quant v1.1.0
-  Downloaded siphasher v1.0.1
-  Downloaded toml v0.8.14
-  Downloaded unicode-width v0.1.11
-  Downloaded untrusted v0.9.0
-  Downloaded base62 v2.2.1
-  Downloaded bitflags v1.3.2
-  Downloaded serde_spanned v0.6.6
-  Downloaded enumn v0.1.14
-  Downloaded tinyvec_macros v0.1.1
-  Downloaded adler v1.0.2
-  Downloaded num_cpus v1.16.0
-  Downloaded ab_glyph_rasterizer v0.1.8
-  Downloaded version_check v0.9.4
-  Downloaded unicode-ident v1.0.12
-  Downloaded scopeguard v1.2.0
-  Downloaded simd-adler32 v0.3.7
-  Downloaded smawk v0.3.2
-  Downloaded subtle v2.5.0
-  Downloaded thiserror-impl v1.0.57
+  Downloaded hex v0.4.3
+  Downloaded globwalk v0.8.1
   Downloaded shlex v1.3.0
-  Downloaded tauri-winres v0.1.1
-  Downloaded jni-sys v0.3.0
+  Downloaded rust-i18n v3.1.4
+  Downloaded arrayvec v0.7.4
+  Downloaded subtle v2.5.0
+  Downloaded egui_extras v0.27.2
   Downloaded lazy_static v1.4.0
-  Downloaded smallvec v1.13.1
-  Downloaded triomphe v0.1.14
+  Downloaded emath v0.27.2
+  Downloaded serde v1.0.196
+  Downloaded tauri-winres v0.1.1
   Downloaded zeroize v1.7.0
-  Downloaded serde_yaml v0.9.34+deprecated
-  Downloaded spin v0.9.8
-  Downloaded textwrap v0.16.1
+  Downloaded stable_deref_trait v1.2.0
   Downloaded thiserror v1.0.57
-  Downloaded toml v0.7.8
-  Downloaded unsafe-libyaml v0.2.11
+  Downloaded threadpool v1.8.1
+  Downloaded smawk v0.3.2
+  Downloaded untrusted v0.9.0
+  Downloaded same-file v1.0.6
+  Downloaded scopeguard v1.2.0
   Downloaded walkdir v2.4.0
-  Downloaded winnow v0.5.40
-  Downloaded zip v0.6.6
-  Downloaded either v1.15.0
-  Downloaded glob v0.3.2
-  Downloaded globset v0.4.16
-  Downloaded nohash-hasher v0.2.0
-  Downloaded percent-encoding v2.3.1
-  Downloaded serde_derive v1.0.196
-  Downloaded tiny_http v0.12.0
+  Downloaded textwrap v0.16.1
+  Downloaded unicode-bidi v0.3.15
+  Downloaded autocfg v1.1.0
+  Downloaded equivalent v1.0.1
+  Downloaded unicode-width v0.1.11
+  Downloaded siphasher v1.0.1
+  Downloaded thiserror-impl v1.0.57
+  Downloaded unicode-linebreak v0.1.5
+  Downloaded version_check v0.9.4
+  Downloaded simd-adler32 v0.3.7
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded toml_datetime v0.6.6
+  Downloaded triomphe v0.1.14
+  Downloaded unicode-ident v1.0.12
+  Downloaded rustversion v1.0.20
+  Downloaded semver v1.0.23
+  Downloaded smallvec v1.13.1
+  Downloaded toml v0.7.8
+  Downloaded ryu v1.0.16
+  Downloaded tinyvec v1.6.0
+  Downloaded toml v0.8.14
   Downloaded url v2.5.0
+  Downloaded size v0.4.1
+  Downloaded spin v0.9.8
+  Downloaded tiny_http v0.12.0
+  Downloaded cstr v0.2.11
+  Downloaded dobby-rs v0.1.0
+  Downloaded enumn v0.1.14
+  Downloaded fnv v1.0.7
+  Downloaded form_urlencoded v1.2.1
+  Downloaded rustls-webpki v0.102.8
+  Downloaded serde_yaml v0.9.34+deprecated
+  Downloaded zip v0.6.6
+  Downloaded android-tzdata v0.1.1
+  Downloaded serde_derive v1.0.196
+  Downloaded unsafe-libyaml v0.2.11
+  Downloaded ureq v2.10.1
   Downloaded widestring v1.1.0
   Downloaded toml_edit v0.19.15
   Downloaded toml_edit v0.22.14
-  Downloaded serde v1.0.196
-  Downloaded serde_json v1.0.113
-  Downloaded unicode-normalization v0.1.23
-  Downloaded itoa v1.0.10
-  Downloaded zerocopy v0.7.32
-  Downloaded winnow v0.6.13
-  Downloaded size v0.4.1
-  Downloaded syn v2.0.49
   Downloaded ttf-parser v0.20.0
-  Downloaded sqlparser v0.43.1
-  Downloaded rustls v0.23.16
   Downloaded webpki-roots v0.26.1
-  Downloaded cesu8 v1.1.0
-  Downloaded crossbeam-epoch v0.9.18
+  Downloaded winnow v0.5.40
+  Downloaded zerocopy v0.7.32
+  Downloaded serde_json v1.0.113
+  Downloaded sqlparser v0.43.1
+  Downloaded unicode-normalization v0.1.23
+  Downloaded winnow v0.6.13
+  Downloaded rustls v0.23.16
+  Downloaded syn v2.0.49
+  Downloaded rustix v0.38.31
+  Downloaded chunked_transfer v1.5.0
   Downloaded errno v0.3.8
-  Downloaded globwalk v0.8.1
-  Downloaded dobby-rs v0.1.0
-  Downloaded ecolor v0.27.2
-  Downloaded hex v0.4.3
-  Downloaded byteorder v1.5.0
-  Downloaded egui_extras v0.27.2
-  Downloaded quote v1.0.35
-  Downloaded bitflags v2.4.2
-  Downloaded ascii v1.1.0
-  Downloaded ignore v0.4.23
+  Downloaded jni-sys v0.3.0
+  Downloaded memoffset v0.9.0
   Downloaded enum-map-derive v0.17.0
-  Downloaded httpdate v1.0.3
-  Downloaded autocfg v1.1.0
+  Downloaded cfg-if v1.0.0
+  Downloaded android_system_properties v0.1.5
+  Downloaded cesu8 v1.1.0
+  Downloaded itoa v1.0.10
+  Downloaded num_cpus v1.16.0
+  Downloaded android_logger v0.13.3
+  Downloaded arrayref v0.3.7
+  Downloaded android_log-sys v0.3.1
   Downloaded atomic_float v0.1.0
-  Downloaded constant_time_eq v0.3.0
-  Downloaded cstr v0.2.11
-  Downloaded bytemuck_derive v1.5.0
-  Downloaded equivalent v1.0.1
+  Downloaded ecolor v0.27.2
+  Downloaded nohash-hasher v0.2.0
+  Downloaded crc32fast v1.4.0
+  Downloaded httpdate v1.0.3
   Downloaded iana-time-zone v0.1.60
+  Downloaded globset v0.4.16
+  Downloaded percent-encoding v2.3.1
+  Downloaded bitflags v1.3.2
+  Downloaded either v1.15.0
+  Downloaded fdeflate v0.3.4
+  Downloaded byteorder v1.5.0
+  Downloaded crossbeam-deque v0.8.6
+  Downloaded crossbeam-epoch v0.9.18
+  Downloaded crossbeam-utils v0.8.19
+  Downloaded getrandom v0.2.12
+  Downloaded base62 v2.2.1
+  Downloaded lock_api v0.4.11
+  Downloaded glob v0.3.2
+  Downloaded bytemuck_derive v1.5.0
+  Downloaded quote v1.0.35
+  Downloaded ascii v1.1.0
+  Downloaded egui_glow v0.27.2
+  Downloaded env_logger v0.10.2
   Downloaded normpath v1.3.0
   Downloaded num-traits v0.2.18
-  Downloaded crc32fast v1.4.0
-  Downloaded crossbeam-deque v0.8.6
-  Downloaded egui_glow v0.27.2
-  Downloaded lock_api v0.4.11
+  Downloaded once_cell v1.19.0
+  Downloaded parking_lot v0.12.1
   Downloaded parking_lot_core v0.9.9
+  Downloaded bitflags v2.4.2
+  Downloaded enum-map v2.7.3
+  Downloaded log v0.4.21
   Downloaded proc-macro2 v1.0.78
   Downloaded bytemuck v1.14.3
-  Downloaded crossbeam-utils v0.8.19
-  Downloaded emath v0.27.2
-  Downloaded env_logger v0.10.2
-  Downloaded getrandom v0.2.12
-  Downloaded jni v0.21.1
-  Downloaded log v0.4.21
+  Downloaded bytes v1.5.0
+  Downloaded ignore v0.4.23
   Downloaded miniz_oxide v0.7.2
   Downloaded procfs v0.16.0
-  Downloaded flate2 v1.0.28
-  Downloaded itertools v0.11.0
   Downloaded procfs-core v0.16.0
+  Downloaded arc-swap v1.7.0
   Downloaded base64 v0.22.1
+  Downloaded flate2 v1.0.28
+  Downloaded memchr v2.7.1
   Downloaded cc v1.1.15
+  Downloaded indexmap v2.2.6
+  Downloaded jni v0.21.1
   Downloaded png v0.17.13
-  Downloaded combine v4.6.6
+  Downloaded itertools v0.11.0
   Downloaded owned_ttf_parser v0.20.0
+  Downloaded combine v4.6.6
+  Downloaded hashbrown v0.14.5
   Downloaded glow v0.13.1
   Downloaded blake3 v1.5.1
+  Downloaded aho-corasick v1.1.2
   Downloaded chrono v0.4.34
-  Downloaded egui v0.27.2
+  Downloaded idna v0.5.0
   Downloaded regex v1.10.3
-  Downloaded regex-syntax v0.8.2
   Downloaded bstr v1.12.0
+  Downloaded egui v0.27.2
+  Downloaded regex-syntax v0.8.2
   Downloaded regex-automata v0.4.5
   Downloaded libc v0.2.153
   Downloaded epaint v0.27.2
@@ -255,8 +257,8 @@ meta_patch applied
    Compiling proc-macro2 v1.0.78
    Compiling unicode-ident v1.0.12
    Compiling libc v0.2.153
-   Compiling cfg-if v1.0.0
    Compiling serde v1.0.196
+   Compiling cfg-if v1.0.0
    Compiling autocfg v1.1.0
    Compiling crossbeam-utils v0.8.19
    Compiling memchr v2.7.1
@@ -265,38 +267,38 @@ meta_patch applied
    Compiling quote v1.0.35
    Compiling log v0.4.21
    Compiling syn v2.0.49
-   Compiling hashbrown v0.14.5
    Compiling equivalent v1.0.1
-   Compiling indexmap v2.2.6
+   Compiling hashbrown v0.14.5
    Compiling aho-corasick v1.1.2
+   Compiling indexmap v2.2.6
    Compiling regex-syntax v0.8.2
    Compiling once_cell v1.19.0
+   Compiling serde_json v1.0.113
+   Compiling regex-automata v0.4.5
+   Compiling serde_derive v1.0.196
    Compiling crc32fast v1.4.0
    Compiling simd-adler32 v0.3.7
    Compiling winnow v0.6.13
-   Compiling regex-automata v0.4.5
-   Compiling serde_json v1.0.113
-   Compiling serde_derive v1.0.196
    Compiling bytemuck_derive v1.5.0
-   Compiling serde_spanned v0.6.6
    Compiling toml_datetime v0.6.6
+   Compiling serde_spanned v0.6.6
    Compiling crossbeam-epoch v0.9.18
    Compiling toml_edit v0.22.14
    Compiling bstr v1.12.0
-   Compiling rustversion v1.0.20
    Compiling adler v1.0.2
+   Compiling rustversion v1.0.20
    Compiling same-file v1.0.6
-   Compiling walkdir v2.4.0
    Compiling globset v0.4.16
-   Compiling toml v0.8.14
+   Compiling walkdir v2.4.0
    Compiling miniz_oxide v0.7.2
    Compiling crossbeam-deque v0.8.6
    Compiling bytemuck v1.14.3
-   Compiling num-traits v0.2.18
+   Compiling toml v0.8.14
    Compiling lock_api v0.4.11
+   Compiling num-traits v0.2.18
+   Compiling version_check v0.9.4
    Compiling parking_lot_core v0.9.9
    Compiling semver v1.0.23
-   Compiling version_check v0.9.4
    Compiling smallvec v1.13.1
    Compiling ahash v0.8.11
    Compiling flate2 v1.0.28
@@ -308,14 +310,14 @@ meta_patch applied
    Compiling globwalk v0.8.1
    Compiling owned_ttf_parser v0.20.0
    Compiling regex v1.10.3
-   Compiling ab_glyph_rasterizer v0.1.8
-   Compiling tinyvec_macros v0.1.1
    Compiling zerocopy v0.7.32
-   Compiling winnow v0.5.40
    Compiling itoa v1.0.10
    Compiling ryu v1.0.16
-   Compiling tinyvec v1.6.0
+   Compiling winnow v0.5.40
+   Compiling tinyvec_macros v0.1.1
+   Compiling ab_glyph_rasterizer v0.1.8
    Compiling ab_glyph v0.2.23
+   Compiling tinyvec v1.6.0
    Compiling toml_edit v0.19.15
    Compiling rustc_version v0.4.0
    Compiling parking_lot v0.12.1
@@ -323,17 +325,17 @@ meta_patch applied
    Compiling emath v0.27.2
    Compiling getrandom v0.2.12
    Compiling android_system_properties v0.1.5
-   Compiling rustls-pki-types v1.10.0
+   Compiling spin v0.9.8
    Compiling arc-swap v1.7.0
-   Compiling untrusted v0.9.0
    Compiling either v1.15.0
    Compiling stable_deref_trait v1.2.0
-   Compiling thiserror v1.0.57
-   Compiling unsafe-libyaml v0.2.11
-   Compiling spin v0.9.8
+   Compiling rustls-pki-types v1.10.0
+   Compiling untrusted v0.9.0
    Compiling nohash-hasher v0.2.0
-   Compiling epaint v0.27.2
+   Compiling unsafe-libyaml v0.2.11
+   Compiling thiserror v1.0.57
    Compiling serde_yaml v0.9.34+deprecated
+   Compiling epaint v0.27.2
    Compiling triomphe v0.1.14
    Compiling itertools v0.11.0
    Compiling iana-time-zone v0.1.60
@@ -341,24 +343,24 @@ meta_patch applied
    Compiling embed-resource v2.4.2 (https://github.com/nabijaczleweli/rust-embed-resource.git?rev=e98e9aa28d66b0c2ff43516b41847cac372310dd#e98e9aa2)
    Compiling unicode-normalization v0.1.23
    Compiling base62 v2.2.1
-   Compiling thiserror-impl v1.0.57
    Compiling fdeflate v0.3.4
+   Compiling thiserror-impl v1.0.57
    Compiling memoffset v0.9.0
-   Compiling lazy_static v1.4.0
-   Compiling bitflags v2.4.2
-   Compiling byteorder v1.5.0
-   Compiling unicode-bidi v0.3.15
-   Compiling rustix v0.38.31
-   Compiling android-tzdata v0.1.1
-   Compiling rustls v0.23.16
-   Compiling siphasher v1.0.1
    Compiling percent-encoding v2.3.1
    Compiling normpath v1.3.0
+   Compiling rustls v0.23.16
    Compiling dobby-sys v0.1.0 (https://github.com/LeadRDRK/dobby-sys.git?rev=e005f6abb0db1353b92ff58d50f59112f04dcad4#e005f6ab)
+   Compiling android-tzdata v0.1.1
+   Compiling lazy_static v1.4.0
+   Compiling unicode-bidi v0.3.15
+   Compiling rustix v0.38.31
+   Compiling bitflags v2.4.2
+   Compiling byteorder v1.5.0
+   Compiling siphasher v1.0.1
    Compiling rust-i18n-support v3.1.4
-   Compiling form_urlencoded v1.2.1
    Compiling idna v0.5.0
    Compiling chrono v0.4.34
+   Compiling form_urlencoded v1.2.1
    Compiling png v0.17.13
    Compiling tauri-winres v0.1.1
    Compiling rustls-webpki v0.102.8
@@ -367,54 +369,54 @@ meta_patch applied
    Compiling enum-map-derive v0.17.0
    Compiling blake3 v1.5.1
    Compiling errno v0.3.8
-   Compiling subtle v2.5.0
-   Compiling color_quant v1.1.0
-   Compiling linux-raw-sys v0.4.13
-   Compiling zeroize v1.7.0
-   Compiling glob v0.3.2
    Compiling procfs v0.16.0
-   Compiling bytes v1.5.0
    Compiling hex v0.4.3
+   Compiling linux-raw-sys v0.4.13
+   Compiling bytes v1.5.0
+   Compiling subtle v2.5.0
+   Compiling glob v0.3.2
+   Compiling zeroize v1.7.0
+   Compiling color_quant v1.1.0
+   Compiling image v0.24.9
+   Compiling rust-i18n-macro v3.1.4
    Compiling combine v4.6.6
    Compiling procfs-core v0.16.0
-   Compiling rust-i18n-macro v3.1.4
-   Compiling image v0.24.9
    Compiling enum-map v2.7.3
    Compiling hachimi v0.14.0 (/home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/hz)
    Compiling url v2.5.0
    Compiling webpki-roots v0.26.1
    Compiling env_logger v0.10.2
    Compiling num_cpus v1.16.0
-   Compiling unicode-width v0.1.11
-   Compiling chunked_transfer v1.5.0
-   Compiling httpdate v1.0.3
    Compiling cesu8 v1.1.0
-   Compiling smawk v0.3.2
-   Compiling unicode-linebreak v0.1.5
-   Compiling glow v0.13.1
-   Compiling android_log-sys v0.3.1
-   Compiling arrayref v0.3.7
-   Compiling ascii v1.1.0
    Compiling constant_time_eq v0.3.0
    Compiling arrayvec v0.7.4
+   Compiling android_log-sys v0.3.1
+   Compiling glow v0.13.1
+   Compiling unicode-width v0.1.11
    Compiling jni-sys v0.3.0
    Compiling base64 v0.22.1
+   Compiling smawk v0.3.2
+   Compiling chunked_transfer v1.5.0
+   Compiling unicode-linebreak v0.1.5
+   Compiling httpdate v1.0.3
+   Compiling ascii v1.1.0
+   Compiling arrayref v0.3.7
+   Compiling tiny_http v0.12.0
+   Compiling egui_glow v0.27.2
+   Compiling textwrap v0.16.1
    Compiling ureq v2.10.1
    Compiling jni v0.21.1
-   Compiling egui_glow v0.27.2
-   Compiling tiny_http v0.12.0
    Compiling android_logger v0.13.3
-   Compiling textwrap v0.16.1
    Compiling threadpool v1.8.1
    Compiling dobby-rs v0.1.0
    Compiling egui_extras v0.27.2
    Compiling zip v0.6.6
    Compiling cstr v0.2.11
    Compiling sqlparser v0.43.1
-   Compiling atomic_float v0.1.0
    Compiling size v0.4.1
-   Compiling fnv v1.0.7
+   Compiling atomic_float v0.1.0
    Compiling widestring v1.1.0
+   Compiling fnv v1.0.7
 warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
   --> src/core/gui.rs:93:70
    |
@@ -671,24 +673,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/UnityEngine_CoreModule/Resources.rs:29:5
-   |
-29 |     new_hook!(UnloadUnusedAssets_addr, UnloadUnusedAssets);
-   |     ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -741,24 +725,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/UnityEngine_CoreModule/Application.rs:19:5
-   |
-19 |     new_hook!(set_targetFrameRate_addr, set_targetFrameRate);
-   |     -------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -905,24 +871,6 @@ help: first cast to a pointer `as *const ()`
     |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/UnityEngine_AssetBundleModule/AssetBundle.rs:137:5
-    |
-137 |     new_hook!(LoadAsset_Internal_addr, LoadAsset_Internal);
-    |     ------------------------------------------------------ in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/il2cpp/hook/mod.rs:12:104
     |
   4 | macro_rules! new_hook {
@@ -957,24 +905,6 @@ help: first cast to a pointer `as *const ()`
     |
  13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
     |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/UnityEngine_AssetBundleModule/AssetBundle.rs:138:5
-    |
-138 |     new_hook!(LoadAssetAsync_Internal_addr, LoadAssetAsync_Internal);
-    |     ---------------------------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/il2cpp/hook/mod.rs:12:104
@@ -1013,24 +943,6 @@ help: first cast to a pointer `as *const ()`
     |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/UnityEngine_AssetBundleModule/AssetBundle.rs:139:5
-    |
-139 |     new_hook!(LoadFromFile_Internal_addr, LoadFromFile_Internal);
-    |     ------------------------------------------------------------ in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/il2cpp/hook/mod.rs:12:104
     |
   4 | macro_rules! new_hook {
@@ -1065,24 +977,6 @@ help: first cast to a pointer `as *const ()`
     |
  13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
     |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/UnityEngine_AssetBundleModule/AssetBundle.rs:140:5
-    |
-140 |     new_hook!(Unload_addr, Unload);
-    |     ------------------------------ in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1150,24 +1044,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/UnityEngine_AssetBundleModule/AssetBundleRequest.rs:31:5
-   |
-31 |     new_hook!(GetResult_addr, GetResult);
-   |     ------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -1220,24 +1096,6 @@ help: first cast to a pointer `as *const ()`
     |
  13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
     |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/UnityEngine_TextRenderingModule/TextGenerator.rs:134:5
-    |
-134 |     new_hook!(PopulateWithErrors_addr, PopulateWithErrors);
-    |     ------------------------------------------------------ in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1330,24 +1188,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/LibNative_Runtime/Sqlite3/Query.rs:28:5
-   |
-28 |     new_hook!(GetText_addr, GetText);
-   |     -------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -1382,24 +1222,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/LibNative_Runtime/Sqlite3/Query.rs:29:5
-   |
-29 |     new_hook!(Dispose_addr, Dispose);
-   |     -------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1454,24 +1276,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/LibNative_Runtime/Sqlite3/PreparedQuery.rs:23:5
-   |
-23 |     new_hook!(BindInt_addr, BindInt);
-   |     -------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1546,24 +1350,6 @@ help: first cast to a pointer `as *const ()`
     |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/LibNative_Runtime/Sqlite3/Connection.rs:106:5
-    |
-106 |     new_hook!(Query_addr, Query);
-    |     ---------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/il2cpp/hook/mod.rs:12:104
     |
   4 | macro_rules! new_hook {
@@ -1598,24 +1384,6 @@ help: first cast to a pointer `as *const ()`
     |
  13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
     |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/LibNative_Runtime/Sqlite3/Connection.rs:107:5
-    |
-107 |     new_hook!(PreparedQuery_addr, PreparedQuery);
-    |     -------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1708,24 +1476,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/Localize.rs:89:5
-   |
-89 |     new_hook!(Get_addr, Get);
-   |     ------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -1803,24 +1553,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/LyricsController.rs:65:5
-   |
-65 |     new_hook!(LoadLyrics_addr, LoadLyrics);
-   |     -------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -1913,24 +1645,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GallopUtil.rs:39:5
-   |
-39 |     new_hook!(LineHeadWrapCommonWithColorTag_addr, LineHeadWrapCommonWithColorTag);
-   |     ------------------------------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -1965,24 +1679,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GallopUtil.rs:46:13
-   |
-46 |             new_hook!(LineHeadWrapCommon_addr, LineHeadWrapCommon);
-   |             ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2075,24 +1771,6 @@ help: first cast to a pointer `as *const ()`
     |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/umamusume/UIManager.rs:126:5
-    |
-126 |     new_hook!(SetHeaderTitleText_addr, SetHeaderTitleText);
-    |     ------------------------------------------------------ in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/il2cpp/hook/mod.rs:12:104
     |
   4 | macro_rules! new_hook {
@@ -2127,24 +1805,6 @@ help: first cast to a pointer `as *const ()`
     |
  13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
     |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-   --> src/il2cpp/hook/mod.rs:19:78
-    |
-  4 | macro_rules! new_hook {
-...
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-    |                                                                              ^^^^^^^^
-    |
-   ::: src/il2cpp/hook/umamusume/UIManager.rs:139:9
-    |
-139 |         new_hook!(WaitBootSetup_addr, WaitBootSetup);
-    |         -------------------------------------------- in this macro invocation
-    |
-help: first cast to a pointer `as *const ()`
-    |
- 19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-    |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2273,24 +1933,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GraphicSettings.rs:86:5
-   |
-86 |     new_hook!(GetVirtualResolution3D_addr, GetVirtualResolution3D);
-   |     -------------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -2325,24 +1967,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GraphicSettings.rs:87:5
-   |
-87 |     new_hook!(GetVirtualResolution_addr, GetVirtualResolution);
-   |     ---------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
@@ -2381,24 +2005,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GraphicSettings.rs:88:5
-   |
-88 |     new_hook!(GetVirtualResolutionWidth3D_addr, GetVirtualResolutionWidth3D);
-   |     ------------------------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -2433,24 +2039,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GraphicSettings.rs:89:5
-   |
-89 |     new_hook!(ApplyGraphicsQuality_addr, ApplyGraphicsQuality);
-   |     ---------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2507,24 +2095,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/CameraController.rs:19:5
-   |
-19 |     new_hook!(GetCanvasSize_addr, GetCanvasSize);
-   |     -------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -2577,24 +2147,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/SingleModeStartResultCharaViewer.rs:22:5
-   |
-22 |     new_hook!(SetupImageEffect_addr, SetupImageEffect);
-   |     -------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2651,24 +2203,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/WebViewManager.rs:61:5
-   |
-61 |     new_hook!(GetUrl_addr, GetUrl);
-   |     ------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -2721,24 +2255,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/PartsSingleModeSkillLearningListItem.rs:15:5
-   |
-15 |     new_hook!(UpdateCurrent_addr, UpdateCurrent);
-   |     -------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2795,24 +2311,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/MasterMissionData/MissionData.rs:24:5
-   |
-24 |     new_hook!(get_Name_addr, get_Name);
-   |     ---------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -2865,24 +2363,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TrainingParamChangeA2U.rs:24:5
-   |
-24 |     new_hook!(GetCaptionText_addr, GetCaptionText);
-   |     ---------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -2939,24 +2419,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TextFrame.rs:38:5
-   |
-38 |     new_hook!(Initialize_addr, Initialize);
-   |     -------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -3009,24 +2471,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/PartsSingleModeSkillListItem.rs:32:5
-   |
-32 |     new_hook!(UpdateItem_addr, UpdateItem);
-   |     -------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3101,24 +2545,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/GameSystem.rs:49:5
-   |
-49 |     new_hook!(InitializeGame_addr, InitializeGame);
-   |     ---------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -3171,24 +2597,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/StoryViewTextControllerLandscape.rs:34:5
-   |
-34 |     new_hook!(SetFontSize_addr, SetFontSize);
-   |     ---------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3245,24 +2653,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/StoryViewTextControllerSingleMode.rs:35:5
-   |
-35 |     new_hook!(SetFontSize_addr, SetFontSize);
-   |     ---------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -3315,24 +2705,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/JikkyoDisplay.rs:40:5
-   |
-40 |     new_hook!(Play_addr, Play);
-   |     -------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3443,24 +2815,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/Screen.rs:94:9
-   |
-94 |         new_hook!(ChangeScreenOrientationLandscapeAsync_addr, ChangeScreenOrientationLandscapeAsync);
-   |         -------------------------------------------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -3495,24 +2849,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/Screen.rs:95:9
-   |
-95 |         new_hook!(ChangeScreenOrientationPortraitAsync_addr, ChangeScreenOrientationPortraitAsync);
-   |         ------------------------------------------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3587,24 +2923,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TrainingParamChangePlate.rs:29:5
-   |
-29 |     new_hook!(PlayTypeWrite_addr, PlayTypeWrite);
-   |     -------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -3657,24 +2975,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/SingleModeUtils.rs:58:5
-   |
-58 |     new_hook!(GetMonthTextByTurn_addr, GetMonthTextByTurn);
-   |     ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3749,24 +3049,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TextFontManager.rs:39:5
-   |
-39 |     new_hook!(GetChineseFont_addr, GetChineseFont);
-   |     ---------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -3801,24 +3083,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TextFontManager.rs:40:5
-   |
-40 |     new_hook!(LoadResourcesFolderFont_addr, LoadResourcesFolderFont);
-   |     ---------------------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -3875,24 +3139,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TextCommon.rs:30:5
-   |
-30 |     new_hook!(Awake_addr, Awake);
-   |     ---------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -3945,24 +3191,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/TextMeshProUguiCommon.rs:18:5
-   |
-18 |     new_hook!(Awake_addr, Awake);
-   |     ---------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4019,24 +3247,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/StoryChoiceController.rs:22:5
-   |
-22 |     new_hook!(CheckChoiceAutoTap_addr, CheckChoiceAutoTap);
-   |     ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4089,24 +3299,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/StoryViewController.rs:26:5
-   |
-26 |     new_hook!(GetTimeScaleByHighSpeedType_addr, GetTimeScaleByHighSpeedType);
-   |     ------------------------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4163,24 +3355,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/CharacterNoteTopViewController.rs:62:5
-   |
-62 |     new_hook!(InitializeView_addr, InitializeView);
-   |     ---------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4233,24 +3407,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/NowLoading.rs:33:5
-   |
-33 |     new_hook!(SetupLoadingTips_addr, SetupLoadingTips);
-   |     -------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4307,24 +3463,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/StoryTimelineController.rs:37:5
-   |
-37 |     new_hook!(GotoBlock_addr, GotoBlock);
-   |     ------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4377,24 +3515,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/LiveTheaterCharaSelect.rs:26:5
-   |
-26 |     new_hook!(CheckSwapChara_addr, CheckSwapChara);
-   |     ---------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4451,24 +3571,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/LiveTheaterViewController.rs:30:5
-   |
-30 |     new_hook!(ChangeLive_addr, ChangeLive);
-   |     -------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4521,24 +3623,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/umamusume/CySpringController.rs:33:5
-   |
-33 |     new_hook!(Init_addr, Init);
-   |     -------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4613,24 +3697,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Plugins/AnimateToUnity/AnText.rs:43:5
-   |
-43 |     new_hook!(_UpdateText_addr, _UpdateText);
-   |     ---------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4703,24 +3769,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Plugins/AnimateToUnity/AnGlobalData.rs:27:5
-   |
-27 |     new_hook!(_GetFont_addr, _GetFont);
-   |     ---------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -4755,24 +3803,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Plugins/AnimateToUnity/AnGlobalData.rs:28:5
-   |
-28 |     new_hook!(_GetFontFromCommon_addr, _GetFontFromCommon);
-   |     ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4829,24 +3859,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Cute_Cri_Assembly/MovieManager.rs:34:5
-   |
-34 |     new_hook!(GetMovieFilePath_addr, GetMovieFilePath);
-   |     -------------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
     |
 108 | macro_rules! get_orig_fn {
@@ -4899,24 +3911,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/DOTween/TweenManager.rs:18:5
-   |
-18 |     new_hook!(Update_addr, Update);
-   |     ------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
    --> src/core/interceptor.rs:110:100
@@ -4973,24 +3967,6 @@ help: first cast to a pointer `as *const ()`
    |                                                                            ++++++++++++
 
 warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Cute_Core_Assembly/SafetyNet.rs:19:5
-   |
-19 |     new_hook!(GetSafetyNetStatus_addr, GetSafetyNetStatus);
-   |     ------------------------------------------------------ in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
-
-warning: direct cast of function item into an integer
   --> src/il2cpp/hook/mod.rs:12:104
    |
  4 | macro_rules! new_hook {
@@ -5025,24 +4001,6 @@ help: first cast to a pointer `as *const ()`
    |
 13 |                         crate::core::interceptor::register_meta_orig($hook as *const () as usize, old);
    |                                                                            ++++++++++++
-
-warning: direct cast of function item into an integer
-  --> src/il2cpp/hook/mod.rs:19:78
-   |
- 4 | macro_rules! new_hook {
-...
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as usize);
-   |                                                                              ^^^^^^^^
-   |
-  ::: src/il2cpp/hook/Cute_Core_Assembly/Device.rs:10:5
-   |
-10 |     new_hook!(IsIllegalUser_addr, IsIllegalUser);
-   |     -------------------------------------------- in this macro invocation
-   |
-help: first cast to a pointer `as *const ()`
-   |
-19 |                     let res = hachimi.interceptor.hook($orig as usize, $hook as *const () as usize);
-   |                                                                              ++++++++++++
 
 warning: direct cast of function item into an integer
   --> src/android/hook.rs:21:76
@@ -5339,11 +4297,11 @@ help: first cast to a pointer `as *const ()`
 251 |         Hachimi::instance().interceptor.hook(unsafe { NATIVE_INJECT_EVENT_ADDR }, nativeInjectEvent as *const () as usize)?;
     |                                                                                                     ++++++++++++
 
-warning: `hachimi` (lib) generated 301 warnings (run `cargo fix --lib -p hachimi` to apply 270 suggestions)
-    Finished `release` profile [optimized] target(s) in 1m 50s
+warning: `hachimi` (lib) generated 243 warnings (run `cargo fix --lib -p hachimi` to apply 212 suggestions)
+    Finished `release` profile [optimized] target(s) in 1m 46s
 + SO=target/aarch64-linux-android/release/libhachimi.so
 + ls -l target/aarch64-linux-android/release/libhachimi.so
--rwxr-xr-x 2 runner runner 14851480 Nov 17 14:17 target/aarch64-linux-android/release/libhachimi.so
+-rwxr-xr-x 2 runner runner 14842016 Nov 17 15:04 target/aarch64-linux-android/release/libhachimi.so
 + cp target/aarch64-linux-android/release/libhachimi.so ../libhachimi-meta.so
 + sha256sum ../libhachimi-meta.so
-a932901185c08c0b149d5c495928b0960ecac8f98073c2bb08bf4ab1e8c3662c  ../libhachimi-meta.so
+b0fe45ce3d1d1433863b7f5b3883e504eae8f193db8c651f11b76c07007d95e5  ../libhachimi-meta.so
