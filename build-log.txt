@@ -66,6 +66,7 @@ info: downloading component rust-std
 Cloning into 'hz'...
 + bash tools/meta_patch.sh hz
 meta_patch applied
++ sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
 ++ tail -1
 ++ ls -d /usr/local/lib/android/sdk/ndk/27.3.13750724 /usr/local/lib/android/sdk/ndk/29.0.14206865 /usr/local/lib/android/sdk/ndk/30.0.16248370
 + NDK=/usr/local/lib/android/sdk/ndk/30.0.16248370
@@ -88,166 +89,166 @@ meta_patch applied
     Updating git repository `https://github.com/nabijaczleweli/rust-embed-resource.git`
     Updating crates.io index
  Downloading crates ...
-  Downloaded rust-i18n-macro v3.1.4
-  Downloaded rustc_version v0.4.0
-  Downloaded equivalent v1.0.1
   Downloaded ab_glyph_rasterizer v0.1.8
   Downloaded adler v1.0.2
-  Downloaded ahash v0.8.11
-  Downloaded rust-i18n v3.1.4
-  Downloaded dobby-rs v0.1.0
-  Downloaded egui_extras v0.27.2
-  Downloaded emath v0.27.2
   Downloaded ab_glyph v0.2.23
   Downloaded accesskit v0.12.3
-  Downloaded flate2 v1.0.28
-  Downloaded crossbeam-utils v0.8.19
-  Downloaded owned_ttf_parser v0.20.0
-  Downloaded rust-i18n-support v3.1.4
-  Downloaded rustix v0.38.31
-  Downloaded stable_deref_trait v1.2.0
-  Downloaded simd-adler32 v0.3.7
-  Downloaded serde_derive v1.0.196
-  Downloaded bytes v1.5.0
-  Downloaded atomic_float v0.1.0
-  Downloaded subtle v2.5.0
-  Downloaded android-tzdata v0.1.1
-  Downloaded textwrap v0.16.1
-  Downloaded size v0.4.1
-  Downloaded arrayref v0.3.7
+  Downloaded ahash v0.8.11
+  Downloaded aho-corasick v1.1.2
   Downloaded semver v1.0.23
-  Downloaded siphasher v1.0.1
-  Downloaded toml_edit v0.19.15
-  Downloaded toml_edit v0.22.14
-  Downloaded base62 v2.2.1
-  Downloaded chunked_transfer v1.5.0
-  Downloaded serde_spanned v0.6.6
-  Downloaded scopeguard v1.2.0
-  Downloaded tauri-winres v0.1.1
-  Downloaded zip v0.6.6
-  Downloaded chrono v0.4.34
-  Downloaded bitflags v2.4.2
-  Downloaded spin v0.9.8
-  Downloaded tinyvec_macros v0.1.1
-  Downloaded errno v0.3.8
-  Downloaded rustversion v1.0.20
-  Downloaded smawk v0.3.2
+  Downloaded rustc_version v0.4.0
+  Downloaded ryu v1.0.16
   Downloaded same-file v1.0.6
+  Downloaded cesu8 v1.1.0
+  Downloaded chunked_transfer v1.5.0
+  Downloaded version_check v0.9.4
+  Downloaded chrono v0.4.34
+  Downloaded toml_datetime v0.6.6
+  Downloaded scopeguard v1.2.0
+  Downloaded rust-i18n-macro v3.1.4
+  Downloaded rustversion v1.0.20
+  Downloaded rust-i18n v3.1.4
+  Downloaded unicode-ident v1.0.12
+  Downloaded android-tzdata v0.1.1
+  Downloaded rust-i18n-support v3.1.4
+  Downloaded serde_derive v1.0.196
+  Downloaded android_system_properties v0.1.5
+  Downloaded arrayref v0.3.7
+  Downloaded autocfg v1.1.0
+  Downloaded base62 v2.2.1
+  Downloaded bitflags v2.4.2
+  Downloaded cfg-if v1.0.0
+  Downloaded rustls-pki-types v1.10.0
+  Downloaded android_logger v0.13.3
+  Downloaded stable_deref_trait v1.2.0
+  Downloaded unicode-linebreak v0.1.5
+  Downloaded android_log-sys v0.3.1
+  Downloaded smawk v0.3.2
+  Downloaded getrandom v0.2.12
+  Downloaded glob v0.3.2
+  Downloaded serde v1.0.196
+  Downloaded bytemuck v1.14.3
+  Downloaded miniz_oxide v0.7.2
   Downloaded triomphe v0.1.14
   Downloaded untrusted v0.9.0
-  Downloaded proc-macro2 v1.0.78
-  Downloaded shlex v1.3.0
-  Downloaded threadpool v1.8.1
-  Downloaded parking_lot v0.12.1
-  Downloaded ryu v1.0.16
-  Downloaded crossbeam-deque v0.8.6
-  Downloaded crossbeam-epoch v0.9.18
-  Downloaded cstr v0.2.11
+  Downloaded base64 v0.22.1
+  Downloaded bitflags v1.3.2
+  Downloaded bytes v1.5.0
+  Downloaded cc v1.1.15
+  Downloaded itertools v0.11.0
+  Downloaded tinyvec_macros v0.1.1
+  Downloaded unicode-bidi v0.3.15
   Downloaded httpdate v1.0.3
-  Downloaded itoa v1.0.10
-  Downloaded jni v0.21.1
-  Downloaded miniz_oxide v0.7.2
-  Downloaded toml v0.8.14
-  Downloaded iana-time-zone v0.1.60
-  Downloaded thiserror-impl v1.0.57
-  Downloaded zeroize v1.7.0
-  Downloaded toml v0.7.8
+  Downloaded env_logger v0.10.2
+  Downloaded siphasher v1.0.1
+  Downloaded fdeflate v0.3.4
+  Downloaded tauri-winres v0.1.1
+  Downloaded simd-adler32 v0.3.7
   Downloaded smallvec v1.13.1
-  Downloaded sqlparser v0.43.1
+  Downloaded walkdir v2.4.0
+  Downloaded crc32fast v1.4.0
+  Downloaded lazy_static v1.4.0
+  Downloaded nohash-hasher v0.2.0
+  Downloaded shlex v1.3.0
+  Downloaded zeroize v1.7.0
+  Downloaded byteorder v1.5.0
+  Downloaded fnv v1.0.7
+  Downloaded num_cpus v1.16.0
+  Downloaded thiserror-impl v1.0.57
+  Downloaded threadpool v1.8.1
+  Downloaded subtle v2.5.0
+  Downloaded serde_spanned v0.6.6
+  Downloaded size v0.4.1
+  Downloaded unicode-width v0.1.11
+  Downloaded spin v0.9.8
+  Downloaded flate2 v1.0.28
+  Downloaded thiserror v1.0.57
+  Downloaded tiny_http v0.12.0
   Downloaded tinyvec v1.6.0
-  Downloaded unicode-normalization v0.1.23
-  Downloaded widestring v1.1.0
-  Downloaded ecolor v0.27.2
-  Downloaded serde v1.0.196
-  Downloaded ureq v2.10.1
+  Downloaded enum-map-derive v0.17.0
+  Downloaded textwrap v0.16.1
+  Downloaded toml v0.7.8
+  Downloaded unsafe-libyaml v0.2.11
+  Downloaded toml v0.8.14
+  Downloaded zip v0.6.6
   Downloaded serde_yaml v0.9.34+deprecated
+  Downloaded equivalent v1.0.1
+  Downloaded atomic_float v0.1.0
+  Downloaded color_quant v1.1.0
+  Downloaded enumn v0.1.14
+  Downloaded rustls-webpki v0.102.8
+  Downloaded crossbeam-deque v0.8.6
+  Downloaded unicode-normalization v0.1.23
+  Downloaded url v2.5.0
+  Downloaded widestring v1.1.0
+  Downloaded ascii v1.1.0
+  Downloaded egui_glow v0.27.2
+  Downloaded sqlparser v0.43.1
+  Downloaded toml_edit v0.19.15
+  Downloaded hex v0.4.3
+  Downloaded itoa v1.0.10
+  Downloaded serde_json v1.0.113
+  Downloaded toml_edit v0.22.14
+  Downloaded ureq v2.10.1
+  Downloaded cstr v0.2.11
+  Downloaded errno v0.3.8
+  Downloaded normpath v1.3.0
+  Downloaded winnow v0.5.40
+  Downloaded zerocopy v0.7.32
   Downloaded ttf-parser v0.20.0
+  Downloaded winnow v0.6.13
+  Downloaded arrayvec v0.7.4
+  Downloaded parking_lot_core v0.9.9
+  Downloaded rustls v0.23.16
+  Downloaded rustix v0.38.31
   Downloaded webpki-roots v0.26.1
   Downloaded syn v2.0.49
-  Downloaded version_check v0.9.4
-  Downloaded globset v0.4.16
-  Downloaded rustls-webpki v0.102.8
-  Downloaded rustls v0.23.16
-  Downloaded tiny_http v0.12.0
-  Downloaded unicode-linebreak v0.1.5
-  Downloaded thiserror v1.0.57
-  Downloaded unicode-width v0.1.11
-  Downloaded unicode-ident v1.0.12
-  Downloaded unsafe-libyaml v0.2.11
-  Downloaded unicode-bidi v0.3.15
-  Downloaded walkdir v2.4.0
-  Downloaded nohash-hasher v0.2.0
-  Downloaded zerocopy v0.7.32
-  Downloaded egui v0.27.2
-  Downloaded getrandom v0.2.12
-  Downloaded rustls-pki-types v1.10.0
-  Downloaded url v2.5.0
-  Downloaded winnow v0.5.40
-  Downloaded serde_json v1.0.113
-  Downloaded winnow v0.6.13
-  Downloaded toml_datetime v0.6.6
-  Downloaded android_system_properties v0.1.5
-  Downloaded bytemuck v1.14.3
-  Downloaded byteorder v1.5.0
-  Downloaded regex-syntax v0.8.2
-  Downloaded cesu8 v1.1.0
-  Downloaded ascii v1.1.0
-  Downloaded jni-sys v0.3.0
-  Downloaded android_log-sys v0.3.1
-  Downloaded bitflags v1.3.2
-  Downloaded enum-map-derive v0.17.0
-  Downloaded lock_api v0.4.11
-  Downloaded enumn v0.1.14
-  Downloaded glob v0.3.2
-  Downloaded globwalk v0.8.1
-  Downloaded normpath v1.3.0
-  Downloaded once_cell v1.19.0
-  Downloaded procfs-core v0.16.0
-  Downloaded base64 v0.22.1
-  Downloaded cc v1.1.15
-  Downloaded combine v4.6.6
-  Downloaded crc32fast v1.4.0
-  Downloaded either v1.15.0
-  Downloaded env_logger v0.10.2
-  Downloaded itertools v0.11.0
-  Downloaded png v0.17.13
   Downloaded memoffset v0.9.0
-  Downloaded arrayvec v0.7.4
-  Downloaded linux-raw-sys v0.4.13
-  Downloaded bytemuck_derive v1.5.0
-  Downloaded regex-automata v0.4.5
-  Downloaded epaint v0.27.2
-  Downloaded fdeflate v0.3.4
-  Downloaded form_urlencoded v1.2.1
-  Downloaded enum-map v2.7.3
-  Downloaded aho-corasick v1.1.2
-  Downloaded percent-encoding v2.3.1
-  Downloaded constant_time_eq v0.3.0
-  Downloaded hex v0.4.3
-  Downloaded color_quant v1.1.0
-  Downloaded autocfg v1.1.0
-  Downloaded cfg-if v1.0.0
-  Downloaded ignore v0.4.23
-  Downloaded lazy_static v1.4.0
-  Downloaded blake3 v1.5.1
-  Downloaded procfs v0.16.0
-  Downloaded arc-swap v1.7.0
-  Downloaded indexmap v2.2.6
-  Downloaded num_cpus v1.16.0
-  Downloaded hashbrown v0.14.5
-  Downloaded android_logger v0.13.3
-  Downloaded memchr v2.7.1
-  Downloaded fnv v1.0.7
   Downloaded quote v1.0.35
+  Downloaded dobby-rs v0.1.0
+  Downloaded ecolor v0.27.2
+  Downloaded form_urlencoded v1.2.1
+  Downloaded jni-sys v0.3.0
+  Downloaded percent-encoding v2.3.1
+  Downloaded crossbeam-epoch v0.9.18
+  Downloaded lock_api v0.4.11
   Downloaded num-traits v0.2.18
-  Downloaded parking_lot_core v0.9.9
-  Downloaded egui_glow v0.27.2
-  Downloaded log v0.4.21
-  Downloaded glow v0.13.1
-  Downloaded idna v0.5.0
-  Downloaded regex v1.10.3
   Downloaded bstr v1.12.0
+  Downloaded constant_time_eq v0.3.0
+  Downloaded globwalk v0.8.1
+  Downloaded either v1.15.0
+  Downloaded emath v0.27.2
+  Downloaded bytemuck_derive v1.5.0
+  Downloaded globset v0.4.16
+  Downloaded log v0.4.21
+  Downloaded parking_lot v0.12.1
+  Downloaded crossbeam-utils v0.8.19
+  Downloaded enum-map v2.7.3
+  Downloaded egui_extras v0.27.2
+  Downloaded iana-time-zone v0.1.60
+  Downloaded once_cell v1.19.0
+  Downloaded arc-swap v1.7.0
+  Downloaded ignore v0.4.23
+  Downloaded proc-macro2 v1.0.78
+  Downloaded procfs v0.16.0
+  Downloaded memchr v2.7.1
+  Downloaded procfs-core v0.16.0
+  Downloaded combine v4.6.6
+  Downloaded indexmap v2.2.6
+  Downloaded jni v0.21.1
+  Downloaded png v0.17.13
+  Downloaded owned_ttf_parser v0.20.0
+  Downloaded blake3 v1.5.1
+  Downloaded hashbrown v0.14.5
+  Downloaded glow v0.13.1
+  Downloaded regex v1.10.3
+  Downloaded idna v0.5.0
+  Downloaded egui v0.27.2
+  Downloaded regex-syntax v0.8.2
+  Downloaded regex-automata v0.4.5
   Downloaded libc v0.2.153
+  Downloaded epaint v0.27.2
+  Downloaded linux-raw-sys v0.4.13
   Downloaded ring v0.17.8
   Downloaded image v0.24.9
    Compiling proc-macro2 v1.0.78
@@ -255,152 +256,152 @@ meta_patch applied
    Compiling libc v0.2.153
    Compiling cfg-if v1.0.0
    Compiling serde v1.0.196
-   Compiling autocfg v1.1.0
    Compiling crossbeam-utils v0.8.19
+   Compiling autocfg v1.1.0
    Compiling memchr v2.7.1
    Compiling shlex v1.3.0
    Compiling cc v1.1.15
    Compiling quote v1.0.35
    Compiling log v0.4.21
    Compiling syn v2.0.49
-   Compiling hashbrown v0.14.5
    Compiling equivalent v1.0.1
+   Compiling hashbrown v0.14.5
    Compiling aho-corasick v1.1.2
    Compiling indexmap v2.2.6
    Compiling once_cell v1.19.0
    Compiling regex-syntax v0.8.2
+   Compiling serde_json v1.0.113
+   Compiling regex-automata v0.4.5
+   Compiling serde_derive v1.0.196
    Compiling crc32fast v1.4.0
    Compiling simd-adler32 v0.3.7
    Compiling winnow v0.6.13
-   Compiling regex-automata v0.4.5
-   Compiling serde_derive v1.0.196
-   Compiling serde_json v1.0.113
    Compiling bytemuck_derive v1.5.0
-   Compiling crossbeam-epoch v0.9.18
-   Compiling toml_datetime v0.6.6
    Compiling serde_spanned v0.6.6
-   Compiling bstr v1.12.0
+   Compiling toml_datetime v0.6.6
    Compiling toml_edit v0.22.14
-   Compiling rustversion v1.0.20
-   Compiling adler v1.0.2
+   Compiling crossbeam-epoch v0.9.18
+   Compiling bstr v1.12.0
    Compiling same-file v1.0.6
-   Compiling walkdir v2.4.0
-   Compiling miniz_oxide v0.7.2
-   Compiling toml v0.8.14
+   Compiling adler v1.0.2
+   Compiling rustversion v1.0.20
    Compiling globset v0.4.16
+   Compiling miniz_oxide v0.7.2
+   Compiling walkdir v2.4.0
    Compiling crossbeam-deque v0.8.6
+   Compiling toml v0.8.14
    Compiling bytemuck v1.14.3
-   Compiling num-traits v0.2.18
    Compiling lock_api v0.4.11
+   Compiling num-traits v0.2.18
    Compiling semver v1.0.23
-   Compiling parking_lot_core v0.9.9
    Compiling smallvec v1.13.1
    Compiling version_check v0.9.4
+   Compiling parking_lot_core v0.9.9
    Compiling ahash v0.8.11
    Compiling flate2 v1.0.28
    Compiling ignore v0.4.23
    Compiling ring v0.17.8
-   Compiling scopeguard v1.2.0
-   Compiling bitflags v1.3.2
    Compiling ttf-parser v0.20.0
+   Compiling bitflags v1.3.2
+   Compiling scopeguard v1.2.0
    Compiling globwalk v0.8.1
    Compiling owned_ttf_parser v0.20.0
    Compiling regex v1.10.3
-   Compiling tinyvec_macros v0.1.1
    Compiling ab_glyph_rasterizer v0.1.8
-   Compiling zerocopy v0.7.32
    Compiling itoa v1.0.10
    Compiling ryu v1.0.16
+   Compiling zerocopy v0.7.32
    Compiling winnow v0.5.40
-   Compiling ab_glyph v0.2.23
+   Compiling tinyvec_macros v0.1.1
    Compiling tinyvec v1.6.0
    Compiling toml_edit v0.19.15
+   Compiling ab_glyph v0.2.23
    Compiling rustc_version v0.4.0
    Compiling parking_lot v0.12.1
    Compiling ecolor v0.27.2
    Compiling emath v0.27.2
    Compiling getrandom v0.2.12
    Compiling android_system_properties v0.1.5
+   Compiling spin v0.9.8
+   Compiling thiserror v1.0.57
    Compiling arc-swap v1.7.0
-   Compiling nohash-hasher v0.2.0
    Compiling either v1.15.0
+   Compiling nohash-hasher v0.2.0
+   Compiling stable_deref_trait v1.2.0
    Compiling rustls-pki-types v1.10.0
    Compiling untrusted v0.9.0
-   Compiling stable_deref_trait v1.2.0
    Compiling unsafe-libyaml v0.2.11
-   Compiling thiserror v1.0.57
-   Compiling spin v0.9.8
    Compiling triomphe v0.1.14
-   Compiling itertools v0.11.0
    Compiling serde_yaml v0.9.34+deprecated
    Compiling epaint v0.27.2
+   Compiling itertools v0.11.0
    Compiling iana-time-zone v0.1.60
-   Compiling toml v0.7.8
    Compiling embed-resource v2.4.2 (https://github.com/nabijaczleweli/rust-embed-resource.git?rev=e98e9aa28d66b0c2ff43516b41847cac372310dd#e98e9aa2)
+   Compiling toml v0.7.8
    Compiling unicode-normalization v0.1.23
    Compiling base62 v2.2.1
-   Compiling thiserror-impl v1.0.57
    Compiling fdeflate v0.3.4
+   Compiling thiserror-impl v1.0.57
    Compiling memoffset v0.9.0
-   Compiling lazy_static v1.4.0
-   Compiling bitflags v2.4.2
-   Compiling byteorder v1.5.0
-   Compiling unicode-bidi v0.3.15
-   Compiling rustix v0.38.31
    Compiling siphasher v1.0.1
-   Compiling rustls v0.23.16
-   Compiling android-tzdata v0.1.1
+   Compiling lazy_static v1.4.0
    Compiling percent-encoding v2.3.1
    Compiling normpath v1.3.0
+   Compiling rustls v0.23.16
+   Compiling android-tzdata v0.1.1
+   Compiling bitflags v2.4.2
+   Compiling unicode-bidi v0.3.15
+   Compiling rustix v0.38.31
+   Compiling byteorder v1.5.0
    Compiling dobby-sys v0.1.0 (https://github.com/LeadRDRK/dobby-sys.git?rev=e005f6abb0db1353b92ff58d50f59112f04dcad4#e005f6ab)
    Compiling rust-i18n-support v3.1.4
-   Compiling form_urlencoded v1.2.1
-   Compiling chrono v0.4.34
    Compiling idna v0.5.0
+   Compiling chrono v0.4.34
+   Compiling form_urlencoded v1.2.1
    Compiling png v0.17.13
    Compiling tauri-winres v0.1.1
-   Compiling rustls-webpki v0.102.8
    Compiling egui v0.27.2
    Compiling rust-i18n v3.1.4
    Compiling enum-map-derive v0.17.0
    Compiling blake3 v1.5.1
    Compiling errno v0.3.8
+   Compiling procfs v0.16.0
+   Compiling hex v0.4.3
    Compiling bytes v1.5.0
    Compiling linux-raw-sys v0.4.13
    Compiling subtle v2.5.0
+   Compiling glob v0.3.2
    Compiling color_quant v1.1.0
    Compiling zeroize v1.7.0
-   Compiling glob v0.3.2
-   Compiling procfs v0.16.0
-   Compiling hex v0.4.3
    Compiling rust-i18n-macro v3.1.4
-   Compiling procfs-core v0.16.0
    Compiling image v0.24.9
+   Compiling rustls-webpki v0.102.8
    Compiling combine v4.6.6
+   Compiling procfs-core v0.16.0
    Compiling enum-map v2.7.3
    Compiling hachimi v0.14.0 (/home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/hz)
    Compiling url v2.5.0
    Compiling webpki-roots v0.26.1
    Compiling env_logger v0.10.2
    Compiling num_cpus v1.16.0
-   Compiling base64 v0.22.1
+   Compiling glow v0.13.1
+   Compiling jni-sys v0.3.0
+   Compiling arrayref v0.3.7
    Compiling unicode-width v0.1.11
+   Compiling arrayvec v0.7.4
+   Compiling base64 v0.22.1
    Compiling android_log-sys v0.3.1
-   Compiling chunked_transfer v1.5.0
    Compiling smawk v0.3.2
+   Compiling constant_time_eq v0.3.0
+   Compiling chunked_transfer v1.5.0
+   Compiling unicode-linebreak v0.1.5
    Compiling httpdate v1.0.3
    Compiling cesu8 v1.1.0
-   Compiling unicode-linebreak v0.1.5
-   Compiling glow v0.13.1
    Compiling ascii v1.1.0
-   Compiling arrayref v0.3.7
-   Compiling jni-sys v0.3.0
-   Compiling constant_time_eq v0.3.0
-   Compiling arrayvec v0.7.4
-   Compiling jni v0.21.1
-   Compiling egui_glow v0.27.2
    Compiling tiny_http v0.12.0
+   Compiling jni v0.21.1
    Compiling textwrap v0.16.1
+   Compiling egui_glow v0.27.2
    Compiling android_logger v0.13.3
    Compiling ureq v2.10.1
    Compiling threadpool v1.8.1
@@ -410,9 +411,9 @@ meta_patch applied
    Compiling cstr v0.2.11
    Compiling sqlparser v0.43.1
    Compiling size v0.4.1
+   Compiling widestring v1.1.0
    Compiling atomic_float v0.1.0
    Compiling fnv v1.0.7
-   Compiling widestring v1.1.0
 warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
   --> src/core/gui.rs:93:70
    |
@@ -423,22 +424,17 @@ warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisf
    = note: for more information, see issue #154024 <https://github.com/rust-lang/rust/issues/154024>
    = note: `#[warn(float_literal_f32_fallback)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error[E0609]: no field `methodPointer` on type `types::Il2CppMethodInfo`
-   --> src/il2cpp/symbols.rs:776:21
-    |
-776 |     let old = (*mi).methodPointer as usize;
-    |                     ^^^^^^^^^^^^^ unknown field
-    |
-    = note: available fields are: `parent`, `ret`, `attrs`, `implattrs`, `callconv`
-
-error[E0609]: no field `methodPointer` on type `types::Il2CppMethodInfo`
-   --> src/il2cpp/symbols.rs:777:11
+error[E0308]: mismatched types
+   --> src/il2cpp/symbols.rs:777:27
     |
 777 |     (*mi).methodPointer = new_fn as *mut c_void;
-    |           ^^^^^^^^^^^^^ unknown field
+    |     -------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `*mut c_void`
+    |     |
+    |     expected due to the type of this binding
     |
-    = note: available fields are: `parent`, `ret`, `attrs`, `implattrs`, `callconv`
+    = note:     expected type `usize`
+            found raw pointer `*mut c_void`
 
-For more information about this error, try `rustc --explain E0609`.
+For more information about this error, try `rustc --explain E0308`.
 warning: `hachimi` (lib) generated 1 warning
-error: could not compile `hachimi` (lib) due to 2 previous errors; 1 warning emitted
+error: could not compile `hachimi` (lib) due to 1 previous error; 1 warning emitted

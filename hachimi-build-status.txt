@@ -1,23 +1,28 @@
-run: 44099136148
+run: 44100082072
+   Compiling enum-map v2.7.3
+   Compiling hachimi v0.14.0 (/home/runner/work/uma-il2cpp-metadata/uma-il2cpp-metadata/hz)
+   Compiling url v2.5.0
+   Compiling webpki-roots v0.26.1
+   Compiling env_logger v0.10.2
    Compiling num_cpus v1.16.0
-   Compiling base64 v0.22.1
+   Compiling glow v0.13.1
+   Compiling jni-sys v0.3.0
+   Compiling arrayref v0.3.7
    Compiling unicode-width v0.1.11
+   Compiling arrayvec v0.7.4
+   Compiling base64 v0.22.1
    Compiling android_log-sys v0.3.1
-   Compiling chunked_transfer v1.5.0
    Compiling smawk v0.3.2
+   Compiling constant_time_eq v0.3.0
+   Compiling chunked_transfer v1.5.0
+   Compiling unicode-linebreak v0.1.5
    Compiling httpdate v1.0.3
    Compiling cesu8 v1.1.0
-   Compiling unicode-linebreak v0.1.5
-   Compiling glow v0.13.1
    Compiling ascii v1.1.0
-   Compiling arrayref v0.3.7
-   Compiling jni-sys v0.3.0
-   Compiling constant_time_eq v0.3.0
-   Compiling arrayvec v0.7.4
-   Compiling jni v0.21.1
-   Compiling egui_glow v0.27.2
    Compiling tiny_http v0.12.0
+   Compiling jni v0.21.1
    Compiling textwrap v0.16.1
+   Compiling egui_glow v0.27.2
    Compiling android_logger v0.13.3
    Compiling ureq v2.10.1
    Compiling threadpool v1.8.1
@@ -27,9 +32,9 @@ run: 44099136148
    Compiling cstr v0.2.11
    Compiling sqlparser v0.43.1
    Compiling size v0.4.1
+   Compiling widestring v1.1.0
    Compiling atomic_float v0.1.0
    Compiling fnv v1.0.7
-   Compiling widestring v1.1.0
 warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisfied
   --> src/core/gui.rs:93:70
    |
@@ -40,22 +45,17 @@ warning: falling back to `f32` as the trait bound `f32: From<f64>` is not satisf
    = note: for more information, see issue #154024 <https://github.com/rust-lang/rust/issues/154024>
    = note: `#[warn(float_literal_f32_fallback)]` (part of `#[warn(future_incompatible)]`) on by default
 
-error[E0609]: no field `methodPointer` on type `types::Il2CppMethodInfo`
-   --> src/il2cpp/symbols.rs:776:21
-    |
-776 |     let old = (*mi).methodPointer as usize;
-    |                     ^^^^^^^^^^^^^ unknown field
-    |
-    = note: available fields are: `parent`, `ret`, `attrs`, `implattrs`, `callconv`
-
-error[E0609]: no field `methodPointer` on type `types::Il2CppMethodInfo`
-   --> src/il2cpp/symbols.rs:777:11
+error[E0308]: mismatched types
+   --> src/il2cpp/symbols.rs:777:27
     |
 777 |     (*mi).methodPointer = new_fn as *mut c_void;
-    |           ^^^^^^^^^^^^^ unknown field
+    |     -------------------   ^^^^^^^^^^^^^^^^^^^^^ expected `usize`, found `*mut c_void`
+    |     |
+    |     expected due to the type of this binding
     |
-    = note: available fields are: `parent`, `ret`, `attrs`, `implattrs`, `callconv`
+    = note:     expected type `usize`
+            found raw pointer `*mut c_void`
 
-For more information about this error, try `rustc --explain E0609`.
+For more information about this error, try `rustc --explain E0308`.
 warning: `hachimi` (lib) generated 1 warning
-error: could not compile `hachimi` (lib) due to 2 previous errors; 1 warning emitted
+error: could not compile `hachimi` (lib) due to 1 previous error; 1 warning emitted
