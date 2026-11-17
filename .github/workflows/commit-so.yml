@@ -1,7 +1,11 @@
 name: commit-so
 
-# 在 hachimi-build 完成后，把它的 artifact 取出来提交进仓库（raw 可直接下载）
+# 取出最近一次成功的 hachimi-build artifact 并提交进仓库（raw 可直接下载）
 on:
+  push:
+    paths:
+      - '.github/workflows/commit-so.yml'
+  workflow_dispatch:
   workflow_run:
     workflows: ["hachimi-build"]
     types: [completed]
@@ -12,7 +16,6 @@ permissions:
 
 jobs:
   commit:
-    if: github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -22,19 +25,24 @@ jobs:
           ref: main
       - name: download artifact
         run: |
-          RID=${{ github.event.workflow_run.id }}
-          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RID/artifacts" --jq '.artifacts[].name'
+          if [ -n "${{ github.event.workflow_run.id }}" ]; then
+            RID="${{ github.event.workflow_run.id }}"
+          else
+            RID=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/hachimi-build.yml/runs?per_page=1" --jq '.workflow_runs[0].id')
+          fi
+          echo "run=$RID"
+          gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RID/artifacts" --jq '.artifacts[] | "\(.id) \(.name) \(.size_in_bytes)"'
           AID=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$RID/artifacts" --jq '.artifacts[0].id')
           echo "artifact=$AID"
           gh api "repos/$GITHUB_REPOSITORY/actions/artifacts/$AID/zip" > /tmp/a.zip
-          unzip -o /tmp/a.zip -d /tmp/so
+          unzip -o /tmp/a.zip -d /tmp/so || true
           find /tmp/so -name "*.so" -exec cp {} "$GITHUB_WORKSPACE/libhachimi-meta.so" \;
-          ls -l "$GITHUB_WORKSPACE/libhachimi-meta.so"
+          ls -l "$GITHUB_WORKSPACE/libhachimi-meta.so" || echo "no so found"
       - name: commit
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add -f libhachimi-meta.so
-          git commit -m "build: metadata-hook libhachimi.so (${{ github.event.workflow_run.id }})" || echo "no change"
+          git commit -m "build: metadata-hook libhachimi.so" || echo "no change"
           git pull --rebase --autostash || true
           git push || true
