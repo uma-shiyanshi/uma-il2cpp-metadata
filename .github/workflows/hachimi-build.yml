@@ -1,6 +1,6 @@
 name: hachimi-build
 
-# meta-only + 拦截 android_os_Process_sendSignal 的自杀信号
+# meta-only + 拦截 android_os_Process_sendSignal（Rust 片段按 10 空格缩进，避免 YAML 断裂）
 on:
   push:
     paths:
@@ -35,27 +35,7 @@ jobs:
           sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
           sed -i 's/methodPointer = new_fn as \*mut c_void;/methodPointer = new_fn;/' hz/src/il2cpp/symbols.rs
 
-          python3 - hz <<'PY'
-          import pathlib
-          # 1) 去掉 inline 回退
-          p = pathlib.Path("hz/src/il2cpp/hook/mod.rs")
-          s = p.read_text(encoding="utf-8")
-          old = ('                if !done {\n'
-                 '                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n'
-                 '                    if let Err(e) = res { error!("{}", e); }\n'
-                 '                }\n')
-          new = ('                if !done {\n'
-                 '                    warn!("skip (no meta): {}", stringify!($hook));\n'
-                 '                }\n')
-          if old in s:
-              p.write_text(s.replace(old, new, 1), encoding="utf-8")
-              print("meta-only ok")
-
-          # 2) 追加 sendSignal hook
-          m = pathlib.Path("hz/src/android/main.rs")
-          t = m.read_text(encoding="utf-8")
-          tail = '''
-
+          cat > /tmp/sig.rs <<'RSEOF'
           static ORIG_SEND_SIGNAL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
 
           extern "C" fn send_signal_hook(_env: *mut std::ffi::c_void, _clazz: *mut std::ffi::c_void, pid: i32, sig: i32) -> i32 {
@@ -84,11 +64,30 @@ jobs:
                   }
               }
           }
-          '''
-          if "install_send_signal_hook" not in t:
+          RSEOF
+          sed -i 's/^          //' /tmp/sig.rs
+          cat /tmp/sig.rs >> hz/src/android/main.rs
+          python3 - hz <<'PY'
+          import pathlib, sys
+          root = pathlib.Path(sys.argv[1])
+          m = root / "src/android/main.rs"
+          t = m.read_text(encoding="utf-8")
+          if "install_send_signal_hook();" not in t:
               t = t.replace('    info!("JNI_OnLoad");', '    info!("JNI_OnLoad");\n    install_send_signal_hook();', 1)
-              m.write_text(t + tail, encoding="utf-8")
-              print("sendSignal hook added")
+              m.write_text(t, encoding="utf-8")
+              print("call inserted")
+          p = root / "src/il2cpp/hook/mod.rs"
+          s = p.read_text(encoding="utf-8")
+          old = ('                if !done {\n'
+                 '                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n'
+                 '                    if let Err(e) = res { error!("{}", e); }\n'
+                 '                }\n')
+          new = ('                if !done {\n'
+                 '                    warn!("skip (no meta): {}", stringify!($hook));\n'
+                 '                }\n')
+          if old in s:
+              p.write_text(s.replace(old, new, 1), encoding="utf-8")
+              print("meta-only ok")
           PY
 
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
@@ -105,7 +104,6 @@ jobs:
           SO=target/aarch64-linux-android/release/libhachimi.so
           ls -l "$SO"
           cp "$SO" ../libhachimi-sig.so
-          sha256sum ../libhachimi-sig.so
 
       - name: publish
         if: always()
