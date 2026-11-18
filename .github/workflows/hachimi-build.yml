@@ -1,6 +1,5 @@
 name: hachimi-build
 
-# meta-only + 拦截 android_os_Process_sendSignal（Rust 片段按 10 空格缩进，避免 YAML 断裂）
 on:
   push:
     paths:
@@ -19,77 +18,23 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: all
+      - name: rust
         run: |
-          LOG=build-log.txt
-          : > "$LOG"
-          exec >> "$LOG" 2>&1
           set -x
-
           curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal
           . "$HOME/.cargo/env"
           rustup target add aarch64-linux-android
 
-          git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
-          bash tools/meta_patch.sh hz
-          sed -i 's/as \*mut Il2CppMethodInfo/as *mut MethodInfo/' hz/src/il2cpp/symbols.rs
-          sed -i 's/methodPointer = new_fn as \*mut c_void;/methodPointer = new_fn;/' hz/src/il2cpp/symbols.rs
+      - name: clone
+        run: git clone --depth 1 -b 2020 https://github.com/Hachimi-Hachimi/Hachimi-Unity2020.git hz
 
-          cat > /tmp/sig.rs <<'RSEOF'
-          static ORIG_SEND_SIGNAL: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
+      - name: patch
+        run: bash tools/meta_patch.sh hz
 
-          extern "C" fn send_signal_hook(_env: *mut std::ffi::c_void, _clazz: *mut std::ffi::c_void, pid: i32, sig: i32) -> i32 {
-              if sig == 9 {
-                  let me = std::process::id() as i32;
-                  if pid == me || pid == -me || pid == 0 { return 0; }
-              }
-              let p = ORIG_SEND_SIGNAL.load(std::sync::atomic::Ordering::Relaxed);
-              if p == 0 { return -1; }
-              let f: extern "C" fn(*mut std::ffi::c_void, *mut std::ffi::c_void, i32, i32) -> i32 = unsafe { std::mem::transmute(p) };
-              f(_env, _clazz, pid, sig)
-          }
-
-          pub fn install_send_signal_hook() {
-              unsafe {
-                  let addr = crate::symbols_impl::dlsym(1 as *mut std::ffi::c_void, "android_os_Process_sendSignal");
-                  if addr == 0 { log::warn!("sendSignal symbol not found"); return; }
-                  let h = Hachimi::instance();
-                  match h.interceptor.hook(addr, send_signal_hook as usize) {
-                      Ok(_) => {
-                          let tr = h.interceptor.get_trampoline_addr(addr);
-                          ORIG_SEND_SIGNAL.store(tr, std::sync::atomic::Ordering::Relaxed);
-                          log::info!("sendSignal hook ok addr={:#x}", addr);
-                      }
-                      Err(e) => log::warn!("sendSignal hook failed: {}", e),
-                  }
-              }
-          }
-          RSEOF
-          sed -i 's/^          //' /tmp/sig.rs
-          cat /tmp/sig.rs >> hz/src/android/main.rs
-          python3 - hz <<'PY'
-          import pathlib, sys
-          root = pathlib.Path(sys.argv[1])
-          m = root / "src/android/main.rs"
-          t = m.read_text(encoding="utf-8")
-          if "install_send_signal_hook();" not in t:
-              t = t.replace('    info!("JNI_OnLoad");', '    info!("JNI_OnLoad");\n    install_send_signal_hook();', 1)
-              m.write_text(t, encoding="utf-8")
-              print("call inserted")
-          p = root / "src/il2cpp/hook/mod.rs"
-          s = p.read_text(encoding="utf-8")
-          old = ('                if !done {\n'
-                 '                    let res = hachimi.interceptor.hook($orig as usize, $hook as usize);\n'
-                 '                    if let Err(e) = res { error!("{}", e); }\n'
-                 '                }\n')
-          new = ('                if !done {\n'
-                 '                    warn!("skip (no meta): {}", stringify!($hook));\n'
-                 '                }\n')
-          if old in s:
-              p.write_text(s.replace(old, new, 1), encoding="utf-8")
-              print("meta-only ok")
-          PY
-
+      - name: build
+        run: |
+          set -x
+          . "$HOME/.cargo/env"
           NDK=$(ls -d "$ANDROID_HOME"/ndk/* | tail -1)
           TC="$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin"
           export CC_aarch64_linux_android="$TC/aarch64-linux-android26-clang"
@@ -98,16 +43,14 @@ jobs:
           export CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER="$TC/aarch64-linux-android26-clang++"
           export CXXSTDLIB="c++_static"
           export RUSTFLAGS="-C link-arg=-lc++_static -C link-arg=-lc++abi"
-
           cd hz
-          cargo build --release --target aarch64-linux-android
-          SO=target/aarch64-linux-android/release/libhachimi.so
-          ls -l "$SO"
-          cp "$SO" ../libhachimi-sig.so
+          cargo build --release --target aarch64-linux-android 2>&1 | tail -30
+          cp target/aarch64-linux-android/release/libhachimi.so "$GITHUB_WORKSPACE/libhachimi-sig.so"
 
       - name: publish
         if: always()
         run: |
+          set -x
           cd "$GITHUB_WORKSPACE"
           if [ -f libhachimi-sig.so ]; then
             NAME="libhachimi-sig-$(date -u +%m%d-%H%M).so"
@@ -115,10 +58,3 @@ jobs:
             gh release view builds -R "$GITHUB_REPOSITORY" >/dev/null 2>&1 || gh release create builds -R "$GITHUB_REPOSITORY" --title builds --notes builds
             gh release upload builds "$NAME" -R "$GITHUB_REPOSITORY" --clobber
           fi
-          git config user.name "github-actions[bot]"
-          git config user.email "github-actions[bot]@users.noreply.github.com"
-          { echo "run: $GITHUB_RUN_ID"; tail -n 60 build-log.txt; } > hachimi-build-status.txt
-          git add -f build-log.txt hachimi-build-status.txt || true
-          git commit -m "ci: build log ($GITHUB_RUN_ID)" || true
-          git pull --rebase --autostash || true
-          git push || true
